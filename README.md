@@ -1,16 +1,8 @@
 # LaundryLab
 
-A collaborative project for sharing and discovering washing machine cycles.
+Dormitory washing machine status prototype. The selected design uses machine signals to start and complete cycles, and Email for reminders.
 
-## Project structure
+- `backend/`: Spring Boot API, MySQL schema, demo data, tests, and [setup/API instructions](backend/README.md).
+- `frontend/`: reserved for the Vue frontend.
 
-- `frontend/` — user interface for browsing and sharing cycles
-- `backend/` — API and data storage for cycle information
-
-## Getting started
-
-The technology stack and setup instructions will be added once the team chooses its tools.
-
-## Collaboration
-
-Create a branch for each change and open a pull request for review. Document new setup steps and API endpoints here as the project grows.
+The backend's first milestone is implemented. Account verification, Email reminders, reports, and management APIs are still to be built.
