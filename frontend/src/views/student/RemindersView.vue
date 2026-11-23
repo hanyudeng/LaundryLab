@@ -1,0 +1,80 @@
+<script setup>
+import { computed } from 'vue'
+import MachineCard from '../../components/MachineCard.vue'
+import { useMachinesStore } from '../../stores/machines'
+import { useCountdown } from '../../composables/useCountdown'
+
+const machinesStore = useMachinesStore()
+const { now } = useCountdown()
+
+// 根據狀態決定卡片上要顯示的說明文字，跟設備總覽同一套邏輯
+function detailText(m) {
+  if (m.status === '使用中') {
+    const remain = Math.max(0, m.end - now.value)
+    const mm = Math.floor(remain / 60000)
+    const ss = Math.floor((remain % 60000) / 1000)
+    return `剩餘時間：約 ${mm}:${String(ss).padStart(2, '0')}`
+  }
+  if (m.status === '待確認') return `最後訊號：${m.signal}`
+  return ''
+}
+
+// 只留下「已訂閱」的機台
+const subscribedMachines = computed(() => {
+  return machinesStore.machines
+    .filter((m) => machinesStore.subscribed.has(m.code))
+    .map((m) => ({
+      ...m,
+      detail: detailText(m),
+      bell: true,
+    }))
+})
+</script>
+
+<template>
+  <div class="reminders-view">
+    <div class="page-head">
+      <h1>我的提醒</h1>
+    </div>
+
+    <div class="machine-list">
+      <MachineCard
+        v-for="m in subscribedMachines"
+        :key="m.code"
+        :machine="m"
+        @toggle-bell="machinesStore.toggleBell"
+      />
+    </div>
+
+    <p v-if="subscribedMachines.length === 0" class="empty">目前沒有訂閱提醒的機台</p>
+  </div>
+</template>
+
+<style scoped>
+.page-head {
+  margin-bottom: 20px;
+}
+
+.page-head h1 {
+  font-size: 25px;
+  color: var(--navy);
+  margin: 0;
+}
+
+/* 單欄列表排版，跟設備總覽的多欄格線不同 */
+.machine-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+/* 沒有訂閱任何機台時顯示的提示 */
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 30px;
+  background: #fff;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+}
+</style>

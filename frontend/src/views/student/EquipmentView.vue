@@ -1,18 +1,13 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import MachineCard from '../../components/MachineCard.vue'
+import { useMachinesStore } from '../../stores/machines'
+import { useCountdown } from '../../composables/useCountdown'
 
-// 假資料，之後要換成打後端 API（使用中的機台多了 end：預計結束的時間戳記）
-const machines = ref([
-  { code: 'A01', status: '可用', dorm: '第一學生宿舍', room: 'A 棟洗衣間', signal: null, end: null },
-  { code: 'A02', status: '使用中', dorm: '第一學生宿舍', room: 'A 棟洗衣間', signal: null, end: Date.now() + 27 * 60000 },
-  { code: 'A03', status: '使用中', dorm: '第一學生宿舍', room: 'A 棟洗衣間', signal: null, end: Date.now() + 8 * 60000 },
-  { code: 'B01', status: '待確認', dorm: '第一學生宿舍', room: 'B 棟洗衣間', signal: '今天 09:17', end: null },
-  { code: 'B02', status: '維修中', dorm: '第一學生宿舍', room: 'B 棟洗衣間', signal: null, end: null },
-])
-
-// 已訂閱提醒的機台編號
-const subscribed = ref(new Set())
+const machinesStore = useMachinesStore()
+const { now } = useCountdown()
+// 狀態的排序優先順序，可用排最前面，維修中排最後面
+const statusRank = { 可用: 0, 使用中: 1, 待確認: 2, 維修中: 3 }
 
 // 下拉選單、篩選 chip 的選項
 const dorms = ['全部宿舍', '第一學生宿舍', '第二學生宿舍']
@@ -25,24 +20,6 @@ const selectedRoom = ref('全部洗衣間')
 const activeStatus = ref('全部')
 
 
-
-// 狀態的排序優先順序，可用排最前面，維修中排最後面
-const statusRank = { 可用: 0, 使用中: 1, 待確認: 2, 維修中: 3 }
-
-// 現在的時間，每秒更新一次，讓倒數計時會跳動
-const now = ref(Date.now())
-let timer = null
-
-onMounted(() => {
-  timer = setInterval(() => {
-    now.value = Date.now()
-  }, 1000)
-})
-
-// 元件離開畫面時要記得清掉計時器，不然會一直在背景跑浪費效能
-onUnmounted(() => {
-  clearInterval(timer)
-})
 
 // 根據狀態決定卡片上要顯示的說明文字
 function detailText(m) {
@@ -59,7 +36,7 @@ function detailText(m) {
 
 // 套用篩選條件、加上顯示用的欄位、排序後的機台清單
 const filteredMachines = computed(() => {
-  return machines.value
+  return machinesStore.machines
     .filter((m) => activeStatus.value === '全部' || m.status === activeStatus.value)
     .filter((m) => selectedDorm.value === '全部宿舍' || m.dorm === selectedDorm.value)
     .filter((m) => selectedRoom.value === '全部洗衣間' || m.room === selectedRoom.value)
@@ -67,7 +44,7 @@ const filteredMachines = computed(() => {
       ...m,
       detail: detailText(m),
       // 只有使用中、待確認的機台才需要鈴鐺按鈕
-      bell: ['使用中', '待確認'].includes(m.status) ? subscribed.value.has(m.code) : null,
+      bell: ['使用中', '待確認'].includes(m.status) ? machinesStore.subscribed.has(m.code) : null,
     }))
     .sort((a, b) => {
       const group = statusRank[a.status] - statusRank[b.status]
@@ -79,15 +56,6 @@ const filteredMachines = computed(() => {
       return a.code.localeCompare(b.code)
     })
 })
-
-// 按鈴鐺時切換訂閱狀態
-function toggleBell(code) {
-  if (subscribed.value.has(code)) {
-    subscribed.value.delete(code)
-  } else {
-    subscribed.value.add(code)
-  }
-}
 </script>
 
 <template>
@@ -122,7 +90,7 @@ function toggleBell(code) {
         v-for="m in filteredMachines"
         :key="m.code"
         :machine="m"
-        @toggle-bell="toggleBell"
+        @toggle-bell="machinesStore.toggleBell"
       />
       <p v-if="filteredMachines.length === 0" class="empty">沒有符合條件的機台</p>
     </div>
