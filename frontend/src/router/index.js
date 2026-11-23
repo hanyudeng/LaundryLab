@@ -27,6 +27,19 @@ const routes = [
         component: () => import('../views/student/RemindersView.vue'),
         meta: { title: '我的提醒' },
       },
+            {
+        path: 'reports',
+        name: 'student-reports',
+        component: () => import('../views/student/ReportsView.vue'),
+        meta: { title: '問題回報' },
+      },
+            {
+        path: 'reports/new',
+        name: 'student-new-report',
+        component: () => import('../views/student/NewReportView.vue'),
+        meta: { title: '新增問題回報' },
+      },
+           
     ],
   },
 ]
