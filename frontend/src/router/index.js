@@ -58,6 +58,12 @@ const routes = [
         component: () => import('../views/supervisor/EquipmentView.vue'),
         meta: { title: '設備總覽' },
       },
+            {
+        path: 'reports',
+        name: 'supervisor-reports',
+        component: () => import('../views/supervisor/ReportsView.vue'),
+        meta: { title: '回報處理' },
+      },
     ],
   },
 ]
