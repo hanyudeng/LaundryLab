@@ -22,5 +22,11 @@ export const useMachinesStore = defineStore('machines', {
         this.subscribed.add(code)
       }
     },
+    // 切換機台的維修狀態（維修中 ↔ 可用），舍監端用
+    toggleMaintenance(code) {
+      const machine = this.machines.find((m) => m.code === code)
+      if (!machine) return
+      machine.status = machine.status === '維修中' ? '可用' : '維修中'
+    },
   },
 })

@@ -1,12 +1,10 @@
 <script setup>
-const props = defineProps({
+defineProps({
   machine: {
     type: Object,
     required: true,
   },
 })
-
-const emit = defineEmits(['toggle-bell'])
 
 // 狀態對應的 badge 顏色 class
 const statusClassMap = {
@@ -15,9 +13,6 @@ const statusClassMap = {
   待確認: 'pending',
   維修中: 'maintenance',
 }
-
-// 哪些狀態的機台可以訂閱提醒（可用、維修中不需要訂閱按鈕）
-const bellableStatuses = ['使用中', '待確認']
 </script>
 
 <template>
@@ -32,24 +27,15 @@ const bellableStatuses = ['使用中', '待確認']
       </div>
       <div class="sub">{{ machine.detail }}</div>
     </div>
-    <button
-      v-if="bellableStatuses.includes(machine.status)"
-      type="button"
-      class="bell"
-      :class="{ on: machine.bell }"
-      :aria-label="machine.bell ? '取消訂閱提醒' : '訂閱提醒'"
-      @click="emit('toggle-bell', machine.code)"
-    >
-      <span class="material-symbols-outlined">
-        {{ machine.bell ? 'notifications_active' : 'notifications_off' }}
-      </span>
-    </button>
-    <span v-else class="bell-placeholder"></span>
+    <div class="action">
+      <!-- 插槽：外面套用這個元件時可以塞自己的按鈕進來（鈴鐺或維修切換），這個元件本身不管塞什麼 -->
+      <slot name="action"></slot>
+    </div>
   </article>
 </template>
 
 <style scoped>
-/* 整張卡片，分成「圖示／文字資訊／鈴鐺」三欄 */
+/* 整張卡片，分成「圖示／文字資訊／插槽」三欄 */
 .machine-card {
   display: grid;
   grid-template-columns: 58px minmax(0, 1fr) 42px;
@@ -131,24 +117,9 @@ const bellableStatuses = ['使用中', '待確認']
   margin-top: 5px;
 }
 
-/* 右邊鈴鐺按鈕，預設灰色 */
-.bell {
-  border: 0;
-  background: transparent;
-  color: #7790a5;
-  cursor: pointer;
-  padding: 8px;
+/* 右邊插槽區域，固定寬度對齊格線，裡面放什麼由外面決定 */
+.action {
   display: grid;
   place-items: center;
-}
-
-/* 已訂閱狀態下，鈴鐺變成深藍色 */
-.bell.on {
-  color: var(--navy);
-}
-
-/* 不能訂閱的機台（可用/維修中），用這個空白佔位，讓卡片版面維持一致高度 */
-.bell-placeholder {
-  display: block;
 }
 </style>

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import StudentLayout from '../layouts/StudentLayout.vue'
-
+import SupervisorLayout from '../layouts/SupervisorLayout.vue'
 const routes = [
   {
     path: '/',
@@ -45,10 +45,22 @@ const routes = [
         component: () => import('../views/student/AccountView.vue'),
         meta: { title: '個人設定' },
       },
+      
+    ],
+  },
+{
+    path: '/supervisor',
+    component: SupervisorLayout,
+    children: [
+      {
+        path: 'equipment',
+        name: 'supervisor-equipment',
+        component: () => import('../views/supervisor/EquipmentView.vue'),
+        meta: { title: '設備總覽' },
+      },
     ],
   },
 ]
-
 const router = createRouter({
   history: createWebHistory(),
   routes,
