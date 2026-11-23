@@ -1,10 +1,22 @@
 <script setup>
+defineProps({
+  centered: {
+    type: Boolean,
+    default: false,
+  },
+  maxWidth: {
+    type: String,
+    default: '760px',
+  },
+})
 </script>
 
 <template>
-  <header class="app-header">
-    <div class="brand">校園生活服務</div>
-    <div class="brand-title">宿舍洗衣服務</div>
+  <header class="app-header" :class="{ centered }">
+    <div class="header-inner" :style="{ maxWidth }">
+      <div class="brand">校園生活服務</div>
+      <div class="brand-title">宿舍洗衣服務</div>
+    </div>
     <!-- 跟原型一樣的六層波浪，顏色從淺藍漸層到接近白色 -->
     <svg class="wave" viewBox="0 0 1440 100" preserveAspectRatio="none">
       <path
@@ -39,10 +51,18 @@
 /* 深藍色頂部橫條本體 */
 .app-header {
   position: relative;
-  height: 140px;
+  height: 160px;
   background: var(--header);
   color: #fff;
-  padding: 28px 24px;
+}
+
+/* 內容容器，寬度由外面傳進來的 maxWidth 決定，這樣才能跟下面頁面內容對齊 */
+.header-inner {
+  margin: 0 auto;
+  padding: 28px 24px 0;
+}
+
+.app-header.centered .header-inner {
   text-align: center;
 }
 

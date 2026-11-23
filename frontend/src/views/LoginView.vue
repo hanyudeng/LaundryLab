@@ -32,13 +32,13 @@ function handleSubmit() {
 
   // 後端登入 API 還沒接，先把帳號記到 store 裡當作已登入
   authStore.login(email.value)
-  router.push('/')
+  router.push('/student/equipment')
 }
 </script>
 
 <template>
   <div class="login-page">
-    <AppHeader />
+    <AppHeader centered max-width="560px" />
     <div class="login-wrap">
       <div class="login-card">
         <div class="login-intro">
