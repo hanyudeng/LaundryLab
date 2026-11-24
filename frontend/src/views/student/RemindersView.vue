@@ -22,7 +22,7 @@ function detailText(m) {
 // 只留下「已訂閱」的機台
 const subscribedMachines = computed(() => {
   return machinesStore.machines
-    .filter((m) => machinesStore.subscribed.has(m.code))
+    .filter((m) => machinesStore.subscribed.has(m.cycleId))
     .map((m) => ({
       ...m,
       detail: detailText(m),
@@ -48,7 +48,7 @@ const subscribedMachines = computed(() => {
       type="button"
       class="bell on"
       aria-label="取消訂閱提醒"
-      @click="machinesStore.toggleBell(m.code)"
+    @click="machinesStore.toggleBell(m.cycleId)"
     >
       <span class="material-symbols-outlined">notifications_active</span>
     </button>

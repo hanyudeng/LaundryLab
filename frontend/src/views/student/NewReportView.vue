@@ -17,7 +17,7 @@ const machineMap = {
   'C 棟洗衣間': ['C01', 'C02'],
 }
 
-const kinds = ['無法啟動', '洗衣中斷', '設備異音', '其他']
+const kinds = ['設備故障', '狀態顯示錯誤', '其他']
 
 const dorm = ref('')
 const room = ref('')
