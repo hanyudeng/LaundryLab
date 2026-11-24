@@ -21,6 +21,11 @@ const routes = [
         name: 'student-equipment',
         component: () => import('../views/student/EquipmentView.vue'),
         meta: { title: '設備總覽' },
+      },      {
+        path: 'reminders',
+        name: 'student-reminders',
+        component: () => import('../views/student/RemindersView.vue'),
+        meta: { title: '我的提醒' },
       },
     ],
   },
