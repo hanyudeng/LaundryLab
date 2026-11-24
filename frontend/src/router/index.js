@@ -64,6 +64,12 @@ const routes = [
         component: () => import('../views/supervisor/ReportsView.vue'),
         meta: { title: '回報處理' },
       },
+            {
+        path: 'account',
+        name: 'supervisor-account',
+        component: () => import('../views/supervisor/AccountView.vue'),
+        meta: { title: '個人設定' },
+      },
     ],
   },
 ]
