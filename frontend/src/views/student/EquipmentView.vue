@@ -44,7 +44,7 @@ const filteredMachines = computed(() => {
       ...m,
       detail: detailText(m),
       // 只有使用中、待確認的機台才需要鈴鐺按鈕
-      bell: ['使用中', '待確認'].includes(m.status) ? machinesStore.subscribed.has(m.code) : null,
+      bell: ['使用中', '待確認'].includes(m.status) ? machinesStore.subscribed.has(m.cycleId) : null,
     }))
     .sort((a, b) => {
       const group = statusRank[a.status] - statusRank[b.status]
@@ -97,7 +97,7 @@ const filteredMachines = computed(() => {
       class="bell"
       :class="{ on: m.bell }"
       :aria-label="m.bell ? '取消訂閱提醒' : '訂閱提醒'"
-      @click="machinesStore.toggleBell(m.code)"
+     @click="machinesStore.toggleBell(m.cycleId)"
     >
       <span class="material-symbols-outlined">
         {{ m.bell ? 'notifications_active' : 'notifications_off' }}
