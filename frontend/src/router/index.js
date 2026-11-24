@@ -39,7 +39,12 @@ const routes = [
         component: () => import('../views/student/NewReportView.vue'),
         meta: { title: '新增問題回報' },
       },
-           
+                 {
+        path: 'account',
+        name: 'student-account',
+        component: () => import('../views/student/AccountView.vue'),
+        meta: { title: '個人設定' },
+      },
     ],
   },
 ]
