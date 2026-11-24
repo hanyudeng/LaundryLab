@@ -1,10 +1,13 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import MachineCard from '../../components/MachineCard.vue'
 import { useMachinesStore } from '../../stores/machines'
 import { useCountdown } from '../../composables/useCountdown'
 
 const machinesStore = useMachinesStore()
+onMounted(() => {
+  machinesStore.loadMachines()
+})
 const { now } = useCountdown()
 // 狀態的排序優先順序，可用排最前面，維修中排最後面
 const statusRank = { 可用: 0, 使用中: 1, 待確認: 2, 維修中: 3 }

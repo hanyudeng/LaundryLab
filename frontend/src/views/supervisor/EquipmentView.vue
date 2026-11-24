@@ -1,10 +1,13 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import MachineCard from '../../components/MachineCard.vue'
 import { useMachinesStore } from '../../stores/machines'
 import { useCountdown } from '../../composables/useCountdown'
 
 const machinesStore = useMachinesStore()
+onMounted(() => {
+  machinesStore.loadMachines()
+})
 const { now } = useCountdown()
 
 const dorms = ['全部宿舍', '第一學生宿舍', '第二學生宿舍']

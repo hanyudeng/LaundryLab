@@ -1,20 +1,55 @@
 import { defineStore } from 'pinia'
+import { fetchDormitories, fetchRooms, fetchMachines } from '../api/machines'
+
+// 後端狀態值對應到我們畫面上用的中文
+const statusMap = {
+  AVAILABLE: '可用',
+  RUNNING: '使用中',
+  PENDING_CONFIRMATION: '待確認',
+  MAINTENANCE: '維修中',
+}
 
 export const useMachinesStore = defineStore('machines', {
   state: () => ({
-    // 假資料，之後要換成打後端 API（cycleId 代表目前這次洗衣循環的編號，沒有循環的機台是 null）
-    machines: [
-      { code: 'A01', status: '可用', dorm: '第一學生宿舍', room: 'A 棟洗衣間', signal: null, end: null, cycleId: null },
-      { code: 'A02', status: '使用中', dorm: '第一學生宿舍', room: 'A 棟洗衣間', signal: null, end: Date.now() + 27 * 60000, cycleId: 101 },
-      { code: 'A03', status: '使用中', dorm: '第一學生宿舍', room: 'A 棟洗衣間', signal: null, end: Date.now() + 8 * 60000, cycleId: 102 },
-      { code: 'B01', status: '待確認', dorm: '第一學生宿舍', room: 'B 棟洗衣間', signal: '今天 09:17', end: null, cycleId: 103 },
-      { code: 'B02', status: '維修中', dorm: '第一學生宿舍', room: 'B 棟洗衣間', signal: null, end: null, cycleId: null },
-    ],
-    // 已訂閱提醒的「循環編號」，不是機台編號——這次循環結束、換下一輪，舊的訂閱就自動對不上了
+    machines: [],
+    // 已訂閱提醒的「循環編號」（後端還沒做訂閱 API，先留在本機）
     subscribed: new Set(),
+    loading: false,
   }),
   actions: {
-    // 按鈴鐺時切換訂閱狀態，傳進來的是 cycleId
+    // 依序打「宿舍→洗衣間→機台」三層 API，整理成一份扁平的機台清單
+    async loadMachines() {
+      this.loading = true
+      try {
+        const dormitories = await fetchDormitories()
+        const allMachines = []
+
+        for (const dormitory of dormitories) {
+          const rooms = await fetchRooms(dormitory.id)
+
+          for (const room of rooms) {
+            const machines = await fetchMachines(room.id)
+
+            for (const m of machines) {
+              allMachines.push({
+                code: m.machineCode,
+                status: statusMap[m.status] || m.status,
+                dorm: dormitory.name,
+                room: room.name,
+                signal: m.lastSignalAt,
+                end: m.estimatedEndAt ? new Date(m.estimatedEndAt).getTime() : null,
+                cycleId: m.cycleId,
+              })
+            }
+          }
+        }
+
+        this.machines = allMachines
+      } finally {
+        this.loading = false
+      }
+    },
+    // 按鈴鐺時切換訂閱狀態（後端還沒做訂閱 API，先留在本機）
     toggleBell(cycleId) {
       if (this.subscribed.has(cycleId)) {
         this.subscribed.delete(cycleId)
@@ -22,7 +57,7 @@ export const useMachinesStore = defineStore('machines', {
         this.subscribed.add(cycleId)
       }
     },
-    // 切換機台的維修狀態（維修中 ↔ 可用），舍監端用
+    // 切換機台的維修狀態（後端還沒做管理操作 API，先留在本機）
     toggleMaintenance(code) {
       const machine = this.machines.find((m) => m.code === code)
       if (!machine) return
