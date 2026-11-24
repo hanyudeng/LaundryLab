@@ -87,11 +87,24 @@ const filteredMachines = computed(() => {
 
     <div class="machine-grid">
       <MachineCard
-        v-for="m in filteredMachines"
-        :key="m.code"
-        :machine="m"
-        @toggle-bell="machinesStore.toggleBell"
-      />
+  v-for="m in filteredMachines"
+  :key="m.code"
+  :machine="m"
+>
+  <template v-if="m.bell !== null" #action>
+    <button
+      type="button"
+      class="bell"
+      :class="{ on: m.bell }"
+      :aria-label="m.bell ? '取消訂閱提醒' : '訂閱提醒'"
+      @click="machinesStore.toggleBell(m.code)"
+    >
+      <span class="material-symbols-outlined">
+        {{ m.bell ? 'notifications_active' : 'notifications_off' }}
+      </span>
+    </button>
+  </template>
+</MachineCard>
       <p v-if="filteredMachines.length === 0" class="empty">沒有符合條件的機台</p>
     </div>
 
@@ -184,5 +197,20 @@ const filteredMachines = computed(() => {
   border-radius: 10px;
   font-size: 13px;
   margin-top: 16px;
+}
+/* 鈴鐺按鈕，預設灰色 */
+.bell {
+  border: 0;
+  background: transparent;
+  color: #7790a5;
+  cursor: pointer;
+  padding: 8px;
+  display: grid;
+  place-items: center;
+}
+
+/* 已訂閱狀態下，鈴鐺變成深藍色 */
+.bell.on {
+  color: var(--navy);
 }
 </style>

@@ -39,11 +39,21 @@ const subscribedMachines = computed(() => {
 
     <div class="machine-list">
       <MachineCard
-        v-for="m in subscribedMachines"
-        :key="m.code"
-        :machine="m"
-        @toggle-bell="machinesStore.toggleBell"
-      />
+  v-for="m in subscribedMachines"
+  :key="m.code"
+  :machine="m"
+>
+  <template #action>
+    <button
+      type="button"
+      class="bell on"
+      aria-label="取消訂閱提醒"
+      @click="machinesStore.toggleBell(m.code)"
+    >
+      <span class="material-symbols-outlined">notifications_active</span>
+    </button>
+  </template>
+</MachineCard>
     </div>
 
     <p v-if="subscribedMachines.length === 0" class="empty">目前沒有訂閱提醒的機台</p>
@@ -76,5 +86,15 @@ const subscribedMachines = computed(() => {
   background: #fff;
   border: 1px dashed var(--line);
   border-radius: 12px;
+}
+/* 鈴鐺按鈕，這頁都是已訂閱狀態固定深藍色 */
+.bell {
+  border: 0;
+  background: transparent;
+  color: var(--navy);
+  cursor: pointer;
+  padding: 8px;
+  display: grid;
+  place-items: center;
 }
 </style>
