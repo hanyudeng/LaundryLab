@@ -6,7 +6,7 @@ const navItems = [
   { to: '/student/equipment', icon: 'local_laundry_service', label: '設備總覽' },
   { to: '/student/reminders', icon: 'notifications_active', label: '我的提醒' },
   { to: '/student/reports', icon: 'warning', label: '問題回報' },
-  { to: '/student/account', icon: 'person', label: '帳戶／我' },
+  { to: '/student/account', icon: 'person', label: '個人設定' },
 ]
 </script>
 
