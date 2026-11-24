@@ -51,11 +51,30 @@ function stepNotes(report) {
         :class="{ expanded: expandedId === r.id }"
       >
         <button type="button" class="report-toggle" @click="toggleExpand(r.id)">
+          <div
+            class="report-icon"
+            :class="{
+              pending: r.status === '未處理',
+              running: r.status === '處理中',
+              done: r.status === '已完成',
+            }"
+          >
+            <span class="material-symbols-outlined">
+              {{ r.status === '已完成' ? 'task_alt' : r.status === '處理中' ? 'schedule' : 'warning' }}
+            </span>
+          </div>
           <div class="report-main">
             <div class="report-title">{{ r.machine }}｜{{ r.kind }}</div>
             <div class="report-meta">{{ r.dorm }} {{ r.room }} · {{ r.time }}</div>
           </div>
-          <span class="badge" :class="{ pending: r.status === '未處理', running: r.status === '處理中' }">
+          <span
+            class="badge"
+            :class="{
+              pending: r.status === '未處理',
+              running: r.status === '處理中',
+              done: r.status === '已完成',
+            }"
+          >
             {{ r.status }}
           </span>
           <span class="chevron">›</span>
@@ -86,6 +105,7 @@ function stepNotes(report) {
 </template>
 
 <style scoped>
+/* 標題跟新增按鈕的排版 */
 .page-head {
   display: flex;
   align-items: center;
@@ -138,6 +158,33 @@ function stepNotes(report) {
   color: inherit;
 }
 
+/* 左邊狀態圖示方塊，固定 42x42px 正方形，顏色隨狀態變化 */
+.report-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--sky);
+  color: var(--blue);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.report-icon.pending {
+  background: #fff3d8;
+  color: var(--yellow);
+}
+
+.report-icon.running {
+  background: #e7f1fb;
+  color: #286da7;
+}
+
+.report-icon.done {
+  background: #e6f5ef;
+  color: var(--green);
+}
+
 .report-main {
   flex: 1;
   min-width: 0;
@@ -172,6 +219,11 @@ function stepNotes(report) {
 .badge.running {
   background: #e7f1fb;
   color: #286da7;
+}
+
+.badge.done {
+  background: #e6f5ef;
+  color: var(--green);
 }
 
 .chevron {
