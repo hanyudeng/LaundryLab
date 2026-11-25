@@ -11,6 +11,16 @@ Java 17+ / Spring Boot 3.5 / MySQL 8. The backend contains a 16-table fresh-inst
 5. For localhost HTTP development only, set `AUTH_SECURE_COOKIE=false`. Keep its default `true` behind HTTPS in deployment. Set `SCHOOL_EMAIL_DOMAIN` if the accepted student email domain differs from `o365.fcu.edu.tw`.
 6. Run `mvn spring-boot:run` from `backend/`. Run `mvn test` for the H2 integration tests.
 
+### Team demo database
+
+For a **fresh local MySQL 8 instance**, import the standalone [team demo dump](sql/laundrylab_team_demo.sql) instead of steps 1 and the separate demo seed:
+
+```sh
+mysql -u root -p < sql/laundrylab_team_demo.sql
+```
+
+The dump creates `laundrylab` with 16 tables, five demo machines, and two already verified test accounts: `stu@o365.fcu.edu.tw` and `sup@o365.fcu.edu.tw`, both using `pass12345`. The supervisor is assigned to the demo dormitory. It contains no real user data or login sessions. Use it only for local development; never deploy those credentials. The dump is intended for an empty database and does not delete existing tables. New registrations still require SMTP configuration.
+
 Do not commit credentials. Date-times use UTC; the frontend should display local time.
 
 ## API contract
