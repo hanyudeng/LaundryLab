@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
+import { roleHome, useAuthStore } from '../stores/auth'
 import AppHeader from '../components/AppHeader.vue'
 
 const router = useRouter()
@@ -17,12 +17,14 @@ const showPassword = ref(false)
 // 錯誤訊息，空字串代表沒有錯誤
 const emailError = ref('')
 const passwordError = ref('')
+const submitError = ref('')
+const submitting = ref(false)
 
 function togglePassword() {
   showPassword.value = !showPassword.value
 }
 
-function handleSubmit() {
+async function handleSubmit() {
   // 檢查有沒有填，沒填就塞錯誤訊息
   emailError.value = email.value.trim() ? '' : '請填寫學號信箱'
   passwordError.value = password.value.trim() ? '' : '請填寫密碼'
@@ -30,9 +32,18 @@ function handleSubmit() {
   // 有錯誤就不要往下跳轉
   if (emailError.value || passwordError.value) return
 
-  // 後端登入 API 還沒接，先把帳號記到 store 裡當作已登入
-  authStore.login(email.value)
-  router.push('/student/equipment')
+  submitError.value = ''
+  submitting.value = true
+  try {
+    const user = await authStore.login(email.value, password.value)
+    await router.push(roleHome[user.role] || '/login')
+  } catch (error) {
+    submitError.value = error.response?.status === 403
+      ? '帳號尚未驗證或已停用'
+      : '帳號或密碼不正確'
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -77,7 +88,9 @@ function handleSubmit() {
           <p v-if="passwordError" class="field-error">⚠ {{ passwordError }}</p>
 
           <div class="login-actions">
-            <button class="btn" type="submit">登入</button>
+            <p v-if="submitError" class="field-error">{{ submitError }}</p>
+            <button class="btn" type="submit" :disabled="submitting">{{ submitting ? '登入中…' : '登入' }}</button>
+            <p><router-link to="/register">學生首次使用？註冊並驗證學校信箱</router-link></p>
           </div>
         </form>
       </div>

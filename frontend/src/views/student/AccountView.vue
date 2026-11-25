@@ -6,8 +6,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 // 登出：清掉 store 裡的登入狀態，跳回登入頁
-function handleLogout() {
-  authStore.logout()
+async function handleLogout() {
+  await authStore.logout()
   router.push('/login')
 }
 </script>
@@ -23,7 +23,7 @@ function handleLogout() {
         <div class="avatar">我</div>
         <div>
           <strong>{{ authStore.email || '尚未登入' }}</strong>
-          <div class="sub">第一學生宿舍</div>
+          <div class="sub">學生帳號</div>
         </div>
       </div>
 

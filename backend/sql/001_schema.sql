@@ -105,17 +105,48 @@ CREATE TABLE notification_log (
   notification_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   subscription_id BIGINT UNSIGNED NOT NULL,
   notification_type ENUM('FIVE_MINUTES_BEFORE','ESTIMATED_COMPLETE') NOT NULL,
-  recipient_email VARCHAR(254) NOT NULL,
-  send_status ENUM('PENDING','SENDING','SENT','FAILED','CANCELLED') NOT NULL DEFAULT 'PENDING',
+  recipient_line_user_id VARCHAR(50) NOT NULL,
+  line_retry_key CHAR(36) NOT NULL UNIQUE,
+  send_status ENUM('PENDING','SENDING','ACCEPTED','FAILED','CANCELLED') NOT NULL DEFAULT 'PENDING',
   attempt_count INT UNSIGNED NOT NULL DEFAULT 0,
   next_attempt_at DATETIME(3) NULL,
   last_attempt_at DATETIME(3) NULL,
-  sent_at DATETIME(3) NULL,
-  provider_message_id VARCHAR(255) NULL,
+  accepted_at DATETIME(3) NULL,
+  line_message_id VARCHAR(255) NULL,
   last_error VARCHAR(500) NULL,
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   UNIQUE (subscription_id, notification_type),
   FOREIGN KEY (subscription_id) REFERENCES reminder_subscription(subscription_id)
+);
+CREATE TABLE line_account_link (
+  link_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL UNIQUE,
+  line_user_id VARCHAR(50) NULL UNIQUE,
+  link_status ENUM('LINKED','UNLINKED') NOT NULL DEFAULT 'UNLINKED',
+  follow_status ENUM('FOLLOWING','BLOCKED','UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+  linked_at DATETIME(3) NULL,
+  unlinked_at DATETIME(3) NULL,
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  FOREIGN KEY (user_id) REFERENCES user_account(user_id)
+);
+CREATE TABLE line_link_request (
+  request_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  nonce_hash CHAR(64) NOT NULL UNIQUE,
+  expires_at DATETIME(3) NOT NULL,
+  used_at DATETIME(3) NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  FOREIGN KEY (user_id) REFERENCES user_account(user_id)
+);
+CREATE TABLE line_webhook_event_log (
+  webhook_event_id VARCHAR(64) PRIMARY KEY,
+  event_type VARCHAR(50) NOT NULL,
+  line_user_id VARCHAR(50) NULL,
+  event_occurred_at DATETIME(3) NOT NULL,
+  received_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  process_status ENUM('RECEIVED','PROCESSED','IGNORED','FAILED') NOT NULL DEFAULT 'RECEIVED',
+  processed_at DATETIME(3) NULL,
+  error_reason VARCHAR(255) NULL
 );
 CREATE TABLE issue_report (
   report_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

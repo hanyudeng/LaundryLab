@@ -1,13 +1,24 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { onMounted, ref } from 'vue'
+import { fetchDormitories } from '../../api/machines'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const assignedDormitories = ref('載入中…')
+onMounted(async () => {
+  try {
+    const dormitories = await fetchDormitories()
+    assignedDormitories.value = dormitories.map((d) => d.name).join('、') || '尚未指派'
+  } catch {
+    assignedDormitories.value = '無法取得指派資料'
+  }
+})
 
 // 登出：清掉 store 裡的登入狀態，跳回登入頁
-function handleLogout() {
-  authStore.logout()
+async function handleLogout() {
+  await authStore.logout()
   router.push('/login')
 }
 </script>
@@ -23,9 +34,9 @@ function handleLogout() {
       <div class="profile">
         <div class="avatar">陳</div>
         <div>
-          <strong>陳怡君</strong>
-          <div class="sub">舍監帳號：{{ authStore.email || 'supervisor01' }}</div>
-          <div class="sub">管理範圍：第一、第二學生宿舍</div>
+          <strong>{{ authStore.email }}</strong>
+          <div class="sub">舍監帳號</div>
+          <div class="sub">管理範圍：{{ assignedDormitories }}</div>
         </div>
       </div>
 

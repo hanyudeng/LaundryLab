@@ -1,6 +1,8 @@
 package com.laundrylab;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +21,15 @@ public class MachineController {
     public MachineController(JdbcTemplate db) { this.db = db; }
 
     @GetMapping("/dormitories")
-    public List<Map<String, Object>> dormitories() {
+    public List<Map<String, Object>> dormitories(HttpServletRequest request) {
+        AuthController.User user = (AuthController.User) request.getAttribute("authUser");
+        if (user != null && user.role().equals("SUPERVISOR"))
+            return db.queryForList("""
+                SELECT d.dormitory_id AS id, d.name FROM dormitory d
+                JOIN dorm_supervisor_assignment a ON a.dormitory_id = d.dormitory_id
+                WHERE a.supervisor_id = ? AND a.is_active = TRUE AND d.is_active = TRUE
+                ORDER BY d.dormitory_id
+                """, user.id());
         return db.queryForList("SELECT dormitory_id AS id, name FROM dormitory WHERE is_active = TRUE ORDER BY dormitory_id");
     }
 
@@ -48,7 +58,9 @@ public class MachineController {
                         ? "PENDING_CONFIRMATION" : "RUNNING";
                 long cycleId = rs.getLong("cycle_id");
                 return new MachineView(rs.getLong("machine_id"), rs.getString("machine_code"), status,
-                    cycleId == 0 ? null : cycleId, end, last);
+                    cycleId == 0 ? null : cycleId,
+                    end == null ? null : end.toInstant(ZoneOffset.UTC),
+                    last == null ? null : last.toInstant(ZoneOffset.UTC));
             }, roomId);
     }
 
@@ -62,5 +74,5 @@ public class MachineController {
     }
 
     public record MachineView(long id, String machineCode, String status, Long cycleId,
-                              LocalDateTime estimatedEndAt, LocalDateTime lastSignalAt) {}
+                              Instant estimatedEndAt, Instant lastSignalAt) {}
 }

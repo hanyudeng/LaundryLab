@@ -6,8 +6,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 // 登出：清掉 store 裡的登入狀態，跳回登入頁
-function handleLogout() {
-  authStore.logout()
+async function handleLogout() {
+  await authStore.logout()
   router.push('/login')
 }
 </script>
@@ -23,8 +23,8 @@ function handleLogout() {
       <div class="profile">
         <div class="avatar">王</div>
         <div>
-          <strong>王經理</strong>
-          <div class="sub">管理員帳號：{{ authStore.email || 'admin01' }}</div>
+          <strong>{{ authStore.email }}</strong>
+          <div class="sub">管理員帳號</div>
           <div class="sub">管理範圍：全部宿舍</div>
         </div>
       </div>
