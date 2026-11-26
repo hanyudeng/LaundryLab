@@ -17,13 +17,13 @@ Source: `洗衣管理系統_最新計劃書.pdf` (42 pages). This file records t
 
 | Area | Current code | Plan target |
 | --- | --- | --- |
-| Machine reads | Four read endpoints and a START/COMPLETE/FAULT signal endpoint exist | Add explicit UTC timestamps and server time; expose signal and stale-status detail |
+| Machine reads | Four read endpoints and a START/COMPLETE/FAULT signal endpoint exist; frontend filters use API data | Add server time; expose signal and stale-status detail |
 | Registration and login | Student registration, school-email verification, bcrypt passwords, expiring cookie sessions, and role-based routing implemented locally | Configure SMTP, add login abuse controls and deployment checks |
-| Reminder subscription | Schema only; Vue bell is local state | Authenticated create/list/cancel API tied to active cycle |
-| Notifications | Email-oriented `notification_log`; no sender | LINE Messaging API sender, scheduled checks, retry key and deduplication |
-| LINE linking | No tables or API | One-time nonce flow, signed webhook, follow/unfollow state, unlink |
-| Reports and management | Schema and mock frontend state | Scoped report, maintenance, assignment, statistics, and audit APIs |
-| Frontend | Role pages and API-backed login, registration, verification, and role routing exist locally | Replace remaining mock state, add LINE linking and delivery status |
+| Reminder subscription | Authenticated list/create/cancel API and frontend bell persist subscriptions | Verify against MySQL and LINE test account |
+| Notifications | Scheduled LINE push uses retry keys and deduplication | Test delivery, cancellation races, and deployment monitoring |
+| LINE linking | Ten-minute code, signed webhook, follow/unfollow, unlink | Test with a configured LINE channel and public HTTPS webhook |
+| Reports and management | Scoped text reports, maintenance, assignments, facilities, and seven-day cycle counts have APIs | Add photo upload, full audit reasons for administrator facility changes, and MySQL integration checks |
+| Frontend | Account, report, equipment, reminder, management, and statistics views call APIs | Add delivery status and end-to-end browser checks |
 
 ## Suggested delivery order
 

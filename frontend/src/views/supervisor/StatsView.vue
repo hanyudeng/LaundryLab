@@ -83,7 +83,7 @@ const usageRates = computed(() => machineCycles.value.map((m) => ({ code: m.code
     <div class="page-head">
       <h1>宿舍統計</h1>
       <p>受指派宿舍・最近七天</p>
-      <p v-if="statsError || machinesStore.error || reportsStore.error" role="alert">{{ statsError || machinesStore.error || reportsStore.error }} <button type="button" @click="loadStats">重試</button></p>
+      <p v-if="statsError || machinesStore.error || reportsStore.error" role="alert">{{ statsError || machinesStore.error || reportsStore.error }} <button type="button" @click="loadStats(); machinesStore.loadMachines(); reportsStore.loadReports()">重試</button></p>
     </div>
 
     <div class="stats-block">

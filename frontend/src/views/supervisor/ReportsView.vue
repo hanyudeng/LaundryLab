@@ -1,8 +1,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useReportsStore } from '../../stores/reports'
+import { useAuthStore } from '../../stores/auth'
 
 const reportsStore = useReportsStore()
+const authStore = useAuthStore()
 onMounted(() => reportsStore.loadReports())
 const updateError = ref('')
 
@@ -171,7 +173,8 @@ async function handleUpdate() {
               placeholder="填寫檢查結果或處理方式"
             ></textarea>
 
-            <div class="sub">處理人：陳怡君（目前登入的舍監）</div>
+            <div class="sub">處理人：{{ authStore.email }}</div>
+            <p v-if="updateError" role="alert">{{ updateError }}</p>
 
             <div class="btn-row">
               <button class="btn" type="submit">更新案件</button>
