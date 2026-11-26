@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import StudentLayout from '../layouts/StudentLayout.vue'
 import SupervisorLayout from '../layouts/SupervisorLayout.vue'
 import AdminLayout from '../layouts/AdminLayout.vue'
+import { roleHome, useAuthStore } from '../stores/auth'
 
 const routes = [
   {
@@ -15,8 +16,20 @@ const routes = [
     meta: { title: '登入', public: true },
   },
   {
+    path: '/register',
+    component: () => import('../views/RegisterView.vue'),
+    meta: { public: true },
+  },
+  {
+    path: '/verify',
+    component: () => import('../views/VerifyView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/student',
     component: StudentLayout,
+    meta: { role: 'STUDENT' },
+    redirect: '/student/equipment',
     children: [
       {
         path: 'equipment',
@@ -53,6 +66,8 @@ const routes = [
   {
     path: '/supervisor',
     component: SupervisorLayout,
+    meta: { role: 'SUPERVISOR' },
+    redirect: '/supervisor/equipment',
     children: [
       {
         path: 'equipment',
@@ -83,6 +98,8 @@ const routes = [
   {
     path: '/admin',
     component: AdminLayout,
+    meta: { role: 'ADMIN' },
+    redirect: '/admin/account',
     children: [
               {
         path: 'equipment',
@@ -109,6 +126,15 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+router.beforeEach(async (to) => {
+  const auth = useAuthStore()
+  await auth.restore()
+  if (to.meta.public) return auth.isLoggedIn && to.path === '/login' ? roleHome[auth.role] : true
+  if (!auth.isLoggedIn) return '/login'
+  if (to.meta.role && auth.role !== to.meta.role) return roleHome[auth.role]
+  return true
 })
 
 export default router

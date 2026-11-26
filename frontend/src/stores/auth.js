@@ -1,32 +1,39 @@
 import { defineStore } from 'pinia'
+import http from '../api/http'
 
-// 讀取瀏覽器裡存的登入資訊，重新整理頁面時用來恢復登入狀態
-function loadSavedAuth() {
-  try {
-    const saved = localStorage.getItem('laundryAuth')
-    return saved ? JSON.parse(saved) : null
-  } catch {
-    return null
-  }
+export const roleHome = {
+  STUDENT: '/student/equipment',
+  SUPERVISOR: '/supervisor/equipment',
+  ADMIN: '/admin/account',
 }
 
-const savedAuth = loadSavedAuth()
-
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    isLoggedIn: savedAuth?.isLoggedIn ?? false,
-    email: savedAuth?.email ?? '',
-  }),
+  state: () => ({ user: null, checked: false }),
+  getters: {
+    isLoggedIn: (state) => !!state.user,
+    email: (state) => state.user?.email || '',
+    role: (state) => state.user?.role || '',
+  },
   actions: {
-    login(email) {
-      this.isLoggedIn = true
-      this.email = email
-      localStorage.setItem('laundryAuth', JSON.stringify({ isLoggedIn: true, email }))
+    async restore() {
+      if (this.checked) return
+      try {
+        this.user = (await http.get('/api/auth/me')).data
+      } catch {
+        this.user = null
+      } finally {
+        this.checked = true
+      }
     },
-    logout() {
-      this.isLoggedIn = false
-      this.email = ''
-      localStorage.removeItem('laundryAuth')
+    async login(email, password) {
+      this.user = (await http.post('/api/auth/login', { email, password })).data
+      this.checked = true
+      return this.user
+    },
+    async logout() {
+      await http.post('/api/auth/logout')
+      this.user = null
+      this.checked = true
     },
   },
 })
