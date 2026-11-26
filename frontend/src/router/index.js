@@ -84,11 +84,23 @@ const routes = [
     path: '/admin',
     component: AdminLayout,
     children: [
+              {
+        path: 'equipment',
+        name: 'admin-equipment',
+        component: () => import('../views/admin/EquipmentSettingsView.vue'),
+        meta: { title: '設備設定' },
+      },
       {
         path: 'account',
         name: 'admin-account',
         component: () => import('../views/admin/AccountView.vue'),
         meta: { title: '個人設定' },
+      },
+            {
+        path: 'accounts',
+        name: 'admin-accounts',
+        component: () => import('../views/admin/AccountsView.vue'),
+        meta: { title: '帳號管理' },
       },
     ],
   },

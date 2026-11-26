@@ -1,11 +1,10 @@
 <script setup>
 import AppHeader from '../components/AppHeader.vue'
 
-// 底部導覽列的 4 個入口
+// 底部導覽列的 3 個入口
 const navItems = [
   { to: '/admin/equipment', icon: 'settings', label: '設備總覽' },
   { to: '/admin/accounts', icon: 'manage_accounts', label: '帳號管理' },
-  { to: '/admin/logs', icon: 'history', label: '操作紀錄' },
   { to: '/admin/account', icon: 'person', label: '個人設定' },
 ]
 </script>
@@ -65,7 +64,7 @@ const navItems = [
   max-width: 760px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 4px;
 }
 
