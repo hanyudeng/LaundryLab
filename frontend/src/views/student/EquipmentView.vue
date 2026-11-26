@@ -7,14 +7,17 @@ import { useCountdown } from '../../composables/useCountdown'
 const machinesStore = useMachinesStore()
 onMounted(() => {
   machinesStore.loadMachines()
+  machinesStore.loadReminders()
 })
 const { now } = useCountdown()
 // 狀態的排序優先順序，可用排最前面，維修中排最後面
 const statusRank = { 可用: 0, 使用中: 1, 待確認: 2, 維修中: 3 }
 
 // 下拉選單、篩選 chip 的選項
-const dorms = ['全部宿舍', '第一學生宿舍', '第二學生宿舍']
-const rooms = ['全部洗衣間', 'A 棟洗衣間', 'B 棟洗衣間']
+const dorms = computed(() => ['全部宿舍', ...machinesStore.dormitories.map((d) => d.name)])
+const rooms = computed(() => ['全部洗衣間', ...machinesStore.rooms
+  .filter((r) => selectedDorm.value === '全部宿舍' || machinesStore.dormitories.find((d) => d.id === r.dormitoryId)?.name === selectedDorm.value)
+  .map((r) => r.name)])
 const statusList = ['全部', '可用', '使用中', '待確認', '維修中']
 
 // 目前選到的篩選條件
@@ -66,7 +69,7 @@ const filteredMachines = computed(() => {
     <div class="page-head">
       <h1>設備總覽</h1>
       <div class="selectors">
-        <select v-model="selectedDorm" class="select">
+        <select v-model="selectedDorm" class="select" @change="selectedRoom = '全部洗衣間'">
           <option v-for="d in dorms" :key="d">{{ d }}</option>
         </select>
         <select v-model="selectedRoom" class="select">
@@ -88,7 +91,10 @@ const filteredMachines = computed(() => {
              </button>
     </div>
 
-    <div class="machine-grid">
+    <p v-if="machinesStore.error" role="alert">{{ machinesStore.error }} <button type="button" @click="machinesStore.loadMachines()">重試</button></p>
+    <p v-if="machinesStore.reminderError" role="alert">{{ machinesStore.reminderError }}</p>
+    <p v-else-if="machinesStore.loading" role="status">載入設備中…</p>
+    <div v-else class="machine-grid">
       <MachineCard
   v-for="m in filteredMachines"
   :key="m.code"

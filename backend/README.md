@@ -1,6 +1,6 @@
 # LaundryLab backend (first milestone)
 
-Java 17+ / Spring Boot 3.5 / MySQL 8. The backend contains a 16-table fresh-install schema, demo machines, read-only machine APIs, a protected signal API, and the first account and role APIs. LINE linking, reminders, reports, and most management APIs are still to be built.
+Java 17+ / Spring Boot 3.5 / MySQL 8. The backend includes machine signals, account and role APIs, reports, facility management, supervisor statistics, reminder subscriptions, and LINE Bot integration.
 
 ## Set up
 
@@ -10,6 +10,7 @@ Java 17+ / Spring Boot 3.5 / MySQL 8. The backend contains a 16-table fresh-inst
 4. For the first administrator only, set `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` (at least 12 characters) on the first start. Remove these environment values after the administrator exists. The bootstrap does not reset an existing administrator password.
 5. For localhost HTTP development only, set `AUTH_SECURE_COOKIE=false`. Keep its default `true` behind HTTPS in deployment. Set `SCHOOL_EMAIL_DOMAIN` if the accepted student email domain differs from `o365.fcu.edu.tw`.
 6. Run `mvn spring-boot:run` from `backend/`. Run `mvn test` for the H2 integration tests.
+7. For LINE reminders, set `LINE_CHANNEL_SECRET`, `LINE_CHANNEL_ACCESS_TOKEN`, and `LINE_BOT_URL` (the official account add URL). Configure the LINE Messaging API webhook to POST to the public HTTPS `/api/line/webhook` endpoint. The student account page generates a ten-minute code; send `link CODE` to the bot, then refresh the status. The webhook verifies LINE's signature before processing events. Without a channel access token, the reminder job does not dispatch messages.
 
 ### Team demo database
 
@@ -39,6 +40,14 @@ Do not commit credentials. Date-times use UTC; the frontend should display local
 | POST | `/api/auth/logout` | Revoke session and clear cookie |
 | PUT | `/api/admin/users/{id}/role` | Administrator changes a student/supervisor role; revokes sessions |
 | PUT/DELETE | `/api/admin/supervisors/{id}/dormitories/{id}` | Administrator assigns or removes a supervisor's dormitory |
+| GET | `/api/admin/users` | Administrator lists users and active assignments |
+| GET/POST/PUT | `/api/admin/facilities` and child paths | Administrator reads, creates, and edits facilities |
+| PUT | `/api/supervisor/machines/{id}/maintenance` | Scoped maintenance change with reason and audit record |
+| GET/POST/PUT | `/api/reports` and `/{id}` | Student reports and scoped supervisor handling |
+| GET | `/api/supervisor/stats` | Seven-day cycle counts for assigned dormitories |
+| GET/POST/DELETE | `/api/student/reminders` and `/{cycleId}` | Student reminder subscriptions |
+| GET/POST/DELETE | `/api/student/line` and `/link-code` | LINE link status, code, and unlink |
+| POST | `/api/line/webhook` | Signed LINE follow, unfollow, and link messages |
 
 Student registration always creates the `STUDENT` role. Administrators can promote a verified account to `SUPERVISOR`; the user must sign in again after promotion. Machine read APIs require a session. Supervisors see only assigned dormitories and receive HTTP 403 when requesting rooms or machines outside their assignment. The signal API uses its separate server-side key.
 
@@ -59,4 +68,4 @@ curl -X POST http://localhost:8080/api/signals \
 
 `SignalFlowTest` verifies start, retry idempotency, duplicate start rejection, pending confirmation, completion, and completion without an active cycle. Apply the migration to the team's MySQL 8 instance before deployment; local tests use a minimal H2 schema and do not validate MySQL DDL.
 
-Next: production SMTP configuration and login abuse controls, LINE account linking, reminder subscriptions and LINE Bot scheduling, issue reports, management operations, and their access checks. The SQL schema is for a fresh database; existing databases need a separately reviewed migration before applying these changes. Machine reads now require a session, but reporting and management features are not yet production-ready.
+The SQL schema is for a fresh database; existing databases need a separately reviewed migration before applying these changes. The new endpoints have not been tested against a live MySQL and LINE account in this checkout. LINE API acceptance does not prove delivery or reading. Photo uploads, login abuse controls, and production monitoring remain to be implemented.

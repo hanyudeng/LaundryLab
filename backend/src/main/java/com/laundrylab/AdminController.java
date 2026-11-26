@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,6 +23,17 @@ public class AdminController {
     public AdminController(JdbcTemplate db) { this.db = db; }
 
     public record RoleChange(String role) {}
+
+    @GetMapping("/users")
+    public java.util.List<Map<String, Object>> users() {
+        return db.queryForList("""
+            SELECT u.user_id AS id, u.email, u.role, u.account_status AS accountStatus,
+                   a.dormitory_id AS dormitoryId
+            FROM user_account u LEFT JOIN dorm_supervisor_assignment a
+              ON a.supervisor_id = u.user_id AND a.is_active = TRUE
+            WHERE u.account_status = 'ACTIVE' ORDER BY u.user_id, a.dormitory_id
+            """);
+    }
 
     @PutMapping("/users/{userId}/role")
     @Transactional

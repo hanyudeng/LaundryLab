@@ -10,14 +10,23 @@ onMounted(() => {
 })
 const { now } = useCountdown()
 
-const dorms = ['全部宿舍', '第一學生宿舍', '第二學生宿舍']
-const rooms = ['全部洗衣間', 'A 棟洗衣間', 'B 棟洗衣間']
+const dorms = computed(() => ['全部宿舍', ...machinesStore.dormitories.map((d) => d.name)])
+const rooms = computed(() => ['全部洗衣間', ...machinesStore.rooms
+  .filter((r) => selectedDorm.value === '全部宿舍' || machinesStore.dormitories.find((d) => d.id === r.dormitoryId)?.name === selectedDorm.value)
+  .map((r) => r.name)])
 const statusList = ['全部', '可用', '使用中', '待確認', '維修中']
 
 const selectedDorm = ref('全部宿舍')
 const selectedRoom = ref('全部洗衣間')
 const activeStatus = ref('全部')
 const searchText = ref('')
+const actionError = ref('')
+async function toggleMaintenance(machine) {
+  const reason = window.prompt(machine.status === '維修中' ? '請填寫解除維修原因' : '請填寫設為維修中的原因')
+  if (!reason?.trim()) return
+  try { await machinesStore.toggleMaintenance(machine.id, reason.trim()); actionError.value = '' }
+  catch { actionError.value = '更新維修狀態失敗' }
+}
 
 // 狀態的排序優先順序，可用排最前面，維修中排最後面
 const statusRank = { 可用: 0, 使用中: 1, 待確認: 2, 維修中: 3 }
@@ -58,7 +67,7 @@ const filteredMachines = computed(() => {
         <p>管理受指派宿舍的洗衣設備</p>
       </div>
       <div class="selectors">
-        <select v-model="selectedDorm" class="select">
+        <select v-model="selectedDorm" class="select" @change="selectedRoom = '全部洗衣間'">
           <option v-for="d in dorms" :key="d">{{ d }}</option>
         </select>
         <select v-model="selectedRoom" class="select">
@@ -84,7 +93,9 @@ const filteredMachines = computed(() => {
       </button>
     </div>
 
-    <div class="machine-grid">
+    <p v-if="machinesStore.error || actionError" role="alert">{{ machinesStore.error || actionError }} <button type="button" @click="machinesStore.loadMachines()">重試</button></p>
+    <p v-else-if="machinesStore.loading" role="status">載入設備中…</p>
+    <div v-else class="machine-grid">
       <MachineCard v-for="m in filteredMachines" :key="m.code" :machine="m">
         <template #action>
           <button
@@ -92,7 +103,7 @@ const filteredMachines = computed(() => {
             class="icon-action"
             :class="{ release: m.status === '維修中' }"
             :aria-label="m.status === '維修中' ? '解除維修' : '設為維修中'"
-            @click="machinesStore.toggleMaintenance(m.code)"
+            @click="toggleMaintenance(m)"
           >
             <span class="material-symbols-outlined">build</span>
           </button>
@@ -101,7 +112,7 @@ const filteredMachines = computed(() => {
       <p v-if="filteredMachines.length === 0" class="empty">目前沒有符合條件的設備</p>
     </div>
 
-    <p class="hint">設備狀態會依現場訊號更新；維修設定僅供原型操作示意。</p>
+    <p class="hint">設備狀態會依現場訊號更新。</p>
   </div>
 </template>
 

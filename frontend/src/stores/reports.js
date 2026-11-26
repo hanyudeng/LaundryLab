@@ -1,57 +1,38 @@
 import { defineStore } from 'pinia'
+import http from '../api/http'
+
+const kinds = { FAULT: '設備故障', STATUS_MISMATCH: '狀態顯示錯誤', OTHER: '其他' }
+const statuses = { OPEN: '未處理', IN_PROGRESS: '處理中', RESOLVED: '已完成' }
+const statusCodes = Object.fromEntries(Object.entries(statuses).map(([key, value]) => [value, key]))
 
 export const useReportsStore = defineStore('reports', {
-  state: () => ({
-    // 假資料，之後要換成打後端 API
-    reports: [
-      {
-        id: 1,
-        reporter: '林同學',
-        dorm: '第一學生宿舍',
-        room: 'A 棟洗衣間',
-        machine: 'A02',
-        kind: '設備故障',
-        status: '未處理',
-        time: '今天 10:24',
-        desc: '按下啟動後沒有反應。',
-        handler: '',
-        note: '',
-      },
-      {
-        id: 2,
-        reporter: '張同學',
-        dorm: '第一學生宿舍',
-        room: 'B 棟洗衣間',
-        machine: 'B01',
-        kind: '狀態顯示錯誤',
-        status: '處理中',
-        time: '昨天 21:08',
-        desc: '洗衣機顯示待確認。',
-        handler: '陳怡君',
-        note: '已先暫停使用，安排檢查。',
-      },
-    ],
-  }),
+  state: () => ({ reports: [], loading: false, error: '' }),
   actions: {
-    // 新增一筆回報，放在清單最前面，學生端用
-    addReport(report) {
-      this.reports.unshift({
-        id: Date.now(),
-        reporter: '你',
-        status: '未處理',
-        time: '剛剛',
-        handler: '',
-        note: '',
-        ...report,
-      })
+    async loadReports() {
+      this.loading = true
+      this.error = ''
+      try {
+        const { data } = await http.get('/api/reports')
+        this.reports = data.map((r) => ({
+          id: r.id, reporter: r.reporter, dorm: r.dorm, room: r.room,
+          machine: r.machine, kind: kinds[r.issueType] || r.issueType,
+          status: statuses[r.status] || r.status,
+          time: new Date(typeof r.createdAt === 'string' && !r.createdAt.endsWith('Z') ? `${r.createdAt}Z` : r.createdAt).toLocaleString(), desc: r.description,
+          handler: r.handler || '', note: r.note || '',
+        }))
+      } catch {
+        this.error = '無法取得回報資料'
+      } finally {
+        this.loading = false
+      }
     },
-    // 更新案件狀態跟處理備註，舍監端用
-    updateReport(id, { status, note, handler }) {
-      const report = this.reports.find((r) => r.id === id)
-      if (!report) return
-      report.status = status
-      report.note = note
-      report.handler = handler
+    async addReport(report) {
+      await http.post('/api/reports', report)
+      await this.loadReports()
+    },
+    async updateReport(id, { status, note }) {
+      await http.put(`/api/reports/${id}`, { status: statusCodes[status], resolution: note })
+      await this.loadReports()
     },
   },
 })

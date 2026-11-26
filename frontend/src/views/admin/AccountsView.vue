@@ -1,10 +1,12 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useAccountsStore } from '../../stores/accounts'
 import { useFacilitiesStore } from '../../stores/facilities'
 
 const accountsStore = useAccountsStore()
 const facilitiesStore = useFacilitiesStore()
+onMounted(() => { accountsStore.load(); facilitiesStore.load() })
+const actionError = ref('')
 
 function dormitoryName(id) {
   const dormitory = facilitiesStore.dormitories.find((d) => d.id === id)
@@ -39,7 +41,7 @@ function toggleNewDormitory(id) {
   else newDormitoryIds.value.splice(index, 1)
 }
 
-function submitAdd() {
+async function submitAdd() {
   addError.value = ''
   const email = newEmail.value.trim().toLowerCase()
   if (!email) return
@@ -50,7 +52,8 @@ function submitAdd() {
     return
   }
 
-  accountsStore.addSupervisor(email, newDormitoryIds.value)
+  try { await accountsStore.addSupervisor(email, newDormitoryIds.value) }
+  catch (error) { addError.value = error.message || '新增失敗'; return }
   closeAddModal()
 }
 
@@ -74,8 +77,9 @@ function toggleEditDormitory(id) {
   else editDormitoryIds.value.splice(index, 1)
 }
 
-function submitEdit() {
-  accountsStore.updateSupervisorDormitories(editingSupervisor.value.id, editDormitoryIds.value)
+async function submitEdit() {
+  try { await accountsStore.updateSupervisorDormitories(editingSupervisor.value.id, editDormitoryIds.value) }
+  catch { actionError.value = '更新指派失敗'; return }
   closeEditModal()
 }
 
@@ -91,14 +95,16 @@ function closeRemoveConfirm() {
   removingSupervisor.value = null
 }
 
-function confirmRemove() {
-  accountsStore.removeSupervisor(removingSupervisor.value.id)
+async function confirmRemove() {
+  try { await accountsStore.removeSupervisor(removingSupervisor.value.id) }
+  catch { actionError.value = '移除舍監失敗'; return }
   closeRemoveConfirm()
 }
 </script>
 
 <template>
   <div class="settings-view">
+    <p v-if="accountsStore.error || facilitiesStore.error || actionError" role="alert">{{ accountsStore.error || facilitiesStore.error || actionError }}</p>
     <div class="page-head">
       <h1>帳號管理</h1>
       <button type="button" class="add-btn" @click="openAddModal">

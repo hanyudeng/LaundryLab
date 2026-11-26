@@ -63,8 +63,32 @@ class AuthFlowTest {
         mvc.perform(get("/api/dormitories/1/rooms").cookie(cookie)).andExpect(status().isOk());
         mvc.perform(get("/api/dormitories/2/rooms").cookie(cookie)).andExpect(status().isForbidden());
         mvc.perform(get("/api/rooms/2/machines").cookie(cookie)).andExpect(status().isForbidden());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/supervisor/machines/1/maintenance")
+            .cookie(cookie).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"status\":\"MAINTENANCE\",\"reason\":\"需要檢查\"}"))
+            .andExpect(status().isOk());
+        assertThat(db.queryForObject("SELECT management_status FROM machine WHERE machine_id = 1", String.class)).isEqualTo("MAINTENANCE");
         mvc.perform(post("/api/auth/logout").cookie(cookie)).andExpect(status().isNoContent());
         mvc.perform(get("/api/auth/me").cookie(cookie)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void reportPersistsAndStudentCannotHandleIt() throws Exception {
+        var encoder = new BCryptPasswordEncoder();
+        db.update("INSERT INTO user_account (email, password_hash, role, email_verified_at, account_status) VALUES (?, ?, 'STUDENT', CURRENT_TIMESTAMP, 'ACTIVE')",
+            "reporter@o365.fcu.edu.tw", encoder.encode("reporter-pass-123"));
+        Cookie student = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"email\":\"reporter@o365.fcu.edu.tw\",\"password\":\"reporter-pass-123\"}"))
+            .andExpect(status().isOk()).andReturn().getResponse().getCookie("laundry_session");
+        mvc.perform(post("/api/reports").cookie(student).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"machineId\":1,\"issueType\":\"FAULT\",\"description\":\"無法啟動\"}"))
+            .andExpect(status().isOk());
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM issue_report WHERE description = '無法啟動'", Integer.class)).isEqualTo(1);
+        mvc.perform(get("/api/reports").cookie(student)).andExpect(status().isOk());
+        long id = db.queryForObject("SELECT report_id FROM issue_report WHERE description = '無法啟動'", Long.class);
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/reports/" + id)
+            .cookie(student).contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"RESOLVED\"}"))
+            .andExpect(status().isForbidden());
     }
 
     @Test
@@ -81,6 +105,12 @@ class AuthFlowTest {
         Cookie admin = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
             .content("{\"email\":\"admin@laundrylab.local\",\"password\":\"admin-pass-123\"}"))
             .andExpect(status().isOk()).andReturn().getResponse().getCookie("laundry_session");
+        mvc.perform(get("/api/admin/facilities").cookie(student)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/admin/facilities").cookie(admin)).andExpect(status().isOk());
+        mvc.perform(post("/api/admin/facilities/dormitories").cookie(admin)
+            .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Test dormitory\"}"))
+            .andExpect(status().isOk());
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM dormitory WHERE name = 'Test dormitory'", Integer.class)).isEqualTo(1);
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/admin/users/" + candidate + "/role")
             .cookie(student).contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"SUPERVISOR\"}"))
             .andExpect(status().isForbidden());

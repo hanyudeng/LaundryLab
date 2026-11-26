@@ -1,8 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useFacilitiesStore } from '../../stores/facilities'
 
 const facilitiesStore = useFacilitiesStore()
+onMounted(() => facilitiesStore.load())
+const actionError = ref('')
 
 // 搜尋機台編號、依宿舍/洗衣間篩選、啟用狀態篩選
 const search = ref('')
@@ -192,11 +194,16 @@ function closeBatchConfirm() {
   showBatchConfirmModal.value = false
 }
 
-function applyBatchConfirm() {
+async function applyBatchConfirm() {
   const isActive = selectionMode.value === 'enable'
-  selectedDormitoryIds.value.forEach((id) => facilitiesStore.setDormitoryActive(id, isActive))
-  selectedRoomIds.value.forEach((id) => facilitiesStore.setRoomActive(id, isActive))
-  selectedMachineIds.value.forEach((id) => facilitiesStore.setMachineActive(id, isActive))
+  try {
+    for (const id of selectedDormitoryIds.value) await facilitiesStore.setDormitoryActive(id, isActive)
+    for (const id of selectedRoomIds.value) await facilitiesStore.setRoomActive(id, isActive)
+    for (const id of selectedMachineIds.value) await facilitiesStore.setMachineActive(id, isActive)
+  } catch {
+    actionError.value = '更新失敗，請重新載入確認狀態'
+    return
+  }
   showBatchConfirmModal.value = false
   selectionMode.value = null
   clearSelection()
@@ -217,10 +224,10 @@ function cancelAddDormitory() {
   newDormitoryName.value = ''
 }
 
-function submitAddDormitory() {
+async function submitAddDormitory() {
   const name = newDormitoryName.value.trim()
   if (!name) return
-  facilitiesStore.addDormitory(name)
+  try { await facilitiesStore.addDormitory(name) } catch { actionError.value = '新增宿舍失敗'; return }
   cancelAddDormitory()
 }
 
@@ -240,10 +247,10 @@ function cancelAddRoom() {
   addRoomForDormitoryId.value = null
 }
 
-function submitAddRoom(dormitoryId) {
+async function submitAddRoom(dormitoryId) {
   const name = newRoomName.value.trim()
   if (!name) return
-  facilitiesStore.addRoom(dormitoryId, name, newRoomLocation.value.trim())
+  try { await facilitiesStore.addRoom(dormitoryId, name, newRoomLocation.value.trim()) } catch { actionError.value = '新增洗衣間失敗'; return }
   cancelAddRoom()
 }
 
@@ -274,7 +281,7 @@ function closeAddMachineModal() {
   showAddMachineModal.value = false
 }
 
-function submitAddMachine() {
+async function submitAddMachine() {
   addMachineError.value = ''
   const roomId = Number(addMachineRoomId.value)
   const code = addMachineCode.value.trim()
@@ -287,7 +294,7 @@ function submitAddMachine() {
   }
 
   const minutes = Number(addMachineCycleMinutes.value) || 0
-  facilitiesStore.addMachine(roomId, code, minutes * 60)
+  try { await facilitiesStore.addMachine(roomId, code, minutes * 60) } catch { addMachineError.value = '新增失敗，請檢查資料'; return }
 
   // 新增完直接把篩選切到這個洗衣間，馬上看到結果
   dormitoryFilter.value = addMachineDormitoryId.value
@@ -336,16 +343,16 @@ function closeEditModal() {
   editingItem.value = null
 }
 
-function submitEdit() {
+async function submitEdit() {
   const { level, id } = editingItem.value
 
   if (level === 'dormitory') {
-    facilitiesStore.updateDormitory(id, { name: editName.value.trim() })
+    try { await facilitiesStore.updateDormitory(id, { name: editName.value.trim() }) } catch { editError.value = '更新失敗'; return }
   } else if (level === 'room') {
-    facilitiesStore.updateRoom(id, {
+    try { await facilitiesStore.updateRoom(id, {
       name: editName.value.trim(),
       location: editLocation.value.trim(),
-    })
+    }) } catch { editError.value = '更新失敗'; return }
   } else if (level === 'machine') {
     const code = editCode.value.trim()
     const duplicate = facilitiesStore.machines.some(
@@ -356,7 +363,7 @@ function submitEdit() {
       return
     }
     const minutes = Number(editCycleMinutes.value) || 0
-    facilitiesStore.updateMachine(id, { code, defaultCycleSeconds: minutes * 60 })
+    try { await facilitiesStore.updateMachine(id, { code, defaultCycleSeconds: minutes * 60 }) } catch { editError.value = '更新失敗'; return }
   }
 
   closeEditModal()
@@ -365,6 +372,7 @@ function submitEdit() {
 
 <template>
   <div class="settings-view">
+    <p v-if="facilitiesStore.error || actionError" role="alert">{{ facilitiesStore.error || actionError }} <button type="button" @click="facilitiesStore.load()">重試</button></p>
     <div class="page-head">
       <h1>設備總覽</h1>
     </div>

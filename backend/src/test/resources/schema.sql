@@ -8,7 +8,8 @@ CREATE TABLE user_account (user_id BIGINT AUTO_INCREMENT PRIMARY KEY, email VARC
 CREATE TABLE email_verification (verification_id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, token_hash CHAR(64) UNIQUE, expires_at TIMESTAMP, used_at TIMESTAMP);
 CREATE TABLE login_session (session_id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, token_hash CHAR(64) UNIQUE, expires_at TIMESTAMP, revoked_at TIMESTAMP);
 CREATE TABLE dorm_supervisor_assignment (supervisor_id BIGINT, dormitory_id BIGINT, is_active BOOLEAN, PRIMARY KEY (supervisor_id, dormitory_id));
-CREATE TABLE audit_log (audit_id BIGINT AUTO_INCREMENT PRIMARY KEY, actor_id BIGINT, target_type VARCHAR(50), target_id BIGINT, action VARCHAR(80), before_value VARCHAR(255), after_value VARCHAR(255));
+CREATE TABLE audit_log (audit_id BIGINT AUTO_INCREMENT PRIMARY KEY, actor_id BIGINT, target_type VARCHAR(50), target_id BIGINT, action VARCHAR(80), before_value VARCHAR(255), after_value VARCHAR(255), reason VARCHAR(500));
+CREATE TABLE issue_report (report_id BIGINT AUTO_INCREMENT PRIMARY KEY, reporter_id BIGINT, machine_id BIGINT, issue_type VARCHAR(30), description VARCHAR(5000), status VARCHAR(30) DEFAULT 'OPEN', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, resolution VARCHAR(5000), handler_id BIGINT);
 INSERT INTO dormitory VALUES (1, 'Demo', TRUE);
 INSERT INTO laundry_room VALUES (1, 1, 'Room', 'First floor', TRUE);
 INSERT INTO machine VALUES (1, 1, 'A01', 'NORMAL', 1800, TRUE);

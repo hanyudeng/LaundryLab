@@ -5,4 +5,4 @@ Dormitory washing machine status prototype. The selected design uses machine sig
 - `backend/`: Spring Boot API, MySQL schema, demo data, tests, and [setup/API instructions](backend/README.md).
 - `frontend/`: Vue client with student, supervisor, and administrator routes.
 
-The machine API and initial registration, verification, login, and role APIs are implemented locally. LINE linking and reminders, reports, and most management APIs are still to be built.
+The frontend calls backend APIs for equipment, accounts, reports, management, and reminders. LINE notifications require server configuration and live integration testing. Existing databases require a reviewed migration before use.
