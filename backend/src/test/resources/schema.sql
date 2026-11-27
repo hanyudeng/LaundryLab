@@ -1,9 +1,13 @@
+CREATE ALIAS UTC_TIMESTAMP FOR "com.laundrylab.H2Functions.utcTimestamp";
 CREATE TABLE dormitory (dormitory_id BIGINT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100), is_active BOOLEAN);
 CREATE TABLE laundry_room (room_id BIGINT AUTO_INCREMENT PRIMARY KEY, dormitory_id BIGINT, name VARCHAR(100), location VARCHAR(255), is_active BOOLEAN);
 CREATE TABLE machine (machine_id BIGINT AUTO_INCREMENT PRIMARY KEY, room_id BIGINT, machine_code VARCHAR(40), management_status VARCHAR(20), default_cycle_seconds BIGINT, is_active BOOLEAN);
 CREATE TABLE wash_cycle (cycle_id BIGINT AUTO_INCREMENT PRIMARY KEY, machine_id BIGINT, started_at TIMESTAMP, estimated_end_at TIMESTAMP, completed_at TIMESTAMP, cycle_status VARCHAR(30));
 CREATE TABLE machine_signal_log (signal_id BIGINT AUTO_INCREMENT PRIMARY KEY, source_event_id VARCHAR(100) UNIQUE, source_kind VARCHAR(20), machine_id BIGINT, cycle_id BIGINT, signal_type VARCHAR(20), received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, process_status VARCHAR(20), error_reason VARCHAR(255));
 CREATE TABLE reminder_subscription (subscription_id BIGINT AUTO_INCREMENT PRIMARY KEY, cycle_id BIGINT, status VARCHAR(20));
+CREATE TABLE line_account_link (link_id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT UNIQUE, line_user_id VARCHAR(50) UNIQUE, link_status VARCHAR(20), follow_status VARCHAR(20), linked_at TIMESTAMP, unlinked_at TIMESTAMP);
+CREATE TABLE line_link_request (request_id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, nonce_hash CHAR(64) UNIQUE, expires_at TIMESTAMP, used_at TIMESTAMP);
+CREATE TABLE line_webhook_event_log (webhook_event_id VARCHAR(64) PRIMARY KEY, event_type VARCHAR(50), line_user_id VARCHAR(50), event_occurred_at TIMESTAMP, process_status VARCHAR(20) DEFAULT 'RECEIVED', processed_at TIMESTAMP);
 CREATE TABLE user_account (user_id BIGINT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(254) UNIQUE, password_hash VARCHAR(255), role VARCHAR(20), email_verified_at TIMESTAMP, account_status VARCHAR(20) DEFAULT 'ACTIVE');
 CREATE TABLE email_verification (verification_id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, token_hash CHAR(64) UNIQUE, expires_at TIMESTAMP, used_at TIMESTAMP);
 CREATE TABLE login_session (session_id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id BIGINT, token_hash CHAR(64) UNIQUE, expires_at TIMESTAMP, revoked_at TIMESTAMP);
