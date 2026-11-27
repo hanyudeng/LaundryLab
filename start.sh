@@ -93,10 +93,11 @@ launch_detached() {
 }
 
 SIGNAL_API_KEY="${SIGNAL_API_KEY:-$(openssl rand -hex 24)}"
+LINE_BOT_URL="${LINE_BOT_URL:-https://line.me/R/ti/p/%40014utqjn}"
 DB_URL="jdbc:mysql://$DB_HOST:$DB_PORT/$DB_NAME?serverTimezone=UTC" \
 DB_USER="$DB_USER" DB_PASSWORD="$db_password" PORT="$BACKEND_PORT" \
 AUTH_SECURE_COOKIE=false PUBLIC_BASE_URL="http://127.0.0.1:$FRONTEND_PORT" \
-SIGNAL_API_KEY="$SIGNAL_API_KEY" \
+SIGNAL_API_KEY="$SIGNAL_API_KEY" LINE_BOT_URL="$LINE_BOT_URL" \
   launch_detached "laundrylab_backend_${UID}" "$BACKEND_PID_FILE" "$BACKEND_LOG" java -jar "$JAR"
 backend_pid="$(cat "$BACKEND_PID_FILE")"
 unset db_password
