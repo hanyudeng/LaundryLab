@@ -20,9 +20,62 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/admin")
 public class AdminController {
     private final JdbcTemplate db;
-    public AdminController(JdbcTemplate db) { this.db = db; }
+    private final SignalController signals;
+    public AdminController(JdbcTemplate db, SignalController signals) { this.db = db; this.signals = signals; }
 
     public record RoleChange(String role) {}
+    public record SignalSourceChange(String source, String reason) {}
+
+    @GetMapping("/machines/signal-sources")
+    public java.util.List<Map<String, Object>> signalSources() {
+        return db.queryForList("""
+            SELECT m.machine_id AS id, m.machine_code AS machineCode,
+                   m.signal_source AS source, m.is_active AS active,
+                   (SELECT c.cycle_status FROM wash_cycle c WHERE c.machine_id = m.machine_id
+                    AND c.cycle_status IN ('RUNNING','PENDING_CONFIRMATION') LIMIT 1) AS cycleStatus,
+                   r.name AS roomName, d.name AS dormitoryName,
+                   (SELECT MAX(s.received_at) FROM machine_signal_log s
+                    WHERE s.machine_id = m.machine_id) AS lastSignalAt
+            FROM machine m JOIN laundry_room r ON r.room_id = m.room_id
+            JOIN dormitory d ON d.dormitory_id = r.dormitory_id
+            ORDER BY d.dormitory_id, r.room_id, m.machine_id
+            """);
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/machines/{machineId}/test-signal/{type}")
+    public SignalController.SignalResult testSignal(@PathVariable long machineId, @PathVariable String type) {
+        if (!java.util.Set.of("START", "COMPLETE").contains(type))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid test signal");
+        String source = db.query("SELECT signal_source FROM machine WHERE machine_id = ?",
+            rs -> rs.next() ? rs.getString(1) : null, machineId);
+        if (source == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Machine not found");
+        if (!"TEST_PAGE".equals(source))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Machine is not configured for test signals");
+        return signals.receiveTrusted(new SignalController.SignalRequest(
+            "admin-test-" + java.util.UUID.randomUUID(), machineId, type, "TEST_PAGE"));
+    }
+
+    @PutMapping("/machines/{machineId}/signal-source")
+    @Transactional
+    public Map<String, String> setSignalSource(@PathVariable long machineId,
+            @RequestBody SignalSourceChange input, HttpServletRequest request) {
+        if (input.source() == null || !java.util.Set.of("TEST_PAGE", "IOT_SWITCH").contains(input.source())
+                || input.reason() == null || input.reason().isBlank() || input.reason().length() > 500)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Source and reason are required");
+        String before = db.query("SELECT signal_source FROM machine WHERE machine_id = ? FOR UPDATE",
+            rs -> rs.next() ? rs.getString(1) : null, machineId);
+        if (before == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Machine not found");
+        if (!before.equals(input.source())) {
+            db.update("UPDATE machine SET signal_source = ? WHERE machine_id = ?", input.source(), machineId);
+            long actorId = ((AuthController.User) request.getAttribute("authUser")).id();
+            db.update("""
+                INSERT INTO audit_log (actor_id, target_type, target_id, action, before_value, after_value, reason)
+                VALUES (?, 'MACHINE', ?, 'CHANGE_SIGNAL_SOURCE', ?, ?, ?)
+                """, actorId, machineId, "{\"signalSource\":\"" + before + "\"}",
+                "{\"signalSource\":\"" + input.source() + "\"}", input.reason().trim());
+        }
+        return Map.of("source", input.source());
+    }
 
     @GetMapping("/users")
     public java.util.List<Map<String, Object>> users() {

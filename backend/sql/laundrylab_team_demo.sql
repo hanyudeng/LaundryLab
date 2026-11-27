@@ -59,10 +59,10 @@ CREATE TABLE `dormitory` (
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`dormitory_id`),
   UNIQUE KEY `name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-INSERT INTO `dormitory` VALUES (1,'示範宿舍',1);
+INSERT INTO `dormitory` VALUES (1,'A棟宿舍',1),(2,'B棟宿舍',1);
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `email_verification` (

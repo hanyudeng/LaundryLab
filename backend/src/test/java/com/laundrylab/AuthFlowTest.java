@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
@@ -59,7 +60,7 @@ class AuthFlowTest {
         db.update("UPDATE user_account SET role = 'SUPERVISOR' WHERE user_id = ?", userId);
         db.update("INSERT INTO dorm_supervisor_assignment VALUES (?, 1, TRUE)", userId);
         db.update("INSERT INTO dormitory VALUES (2, 'Other', TRUE)");
-        db.update("INSERT INTO laundry_room VALUES (2, 2, 'Other room', 'Other floor', TRUE)");
+        db.update("INSERT INTO laundry_room (room_id,dormitory_id,name,location,is_active) VALUES (2, 2, 'Other room', 'Other floor', TRUE)");
         mvc.perform(get("/api/dormitories/1/rooms").cookie(cookie)).andExpect(status().isOk());
         mvc.perform(get("/api/dormitories/2/rooms").cookie(cookie)).andExpect(status().isForbidden());
         mvc.perform(get("/api/rooms/2/machines").cookie(cookie)).andExpect(status().isForbidden());
@@ -86,9 +87,16 @@ class AuthFlowTest {
         assertThat(db.queryForObject("SELECT COUNT(*) FROM issue_report WHERE description = '無法啟動'", Integer.class)).isEqualTo(1);
         mvc.perform(get("/api/reports").cookie(student)).andExpect(status().isOk());
         long id = db.queryForObject("SELECT report_id FROM issue_report WHERE description = '無法啟動'", Long.class);
+        mvc.perform(get("/api/machines/1").cookie(student))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("REPORTED"))
+            .andExpect(jsonPath("$.hasOpenReport").value(true));
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/reports/" + id)
             .cookie(student).contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"RESOLVED\"}"))
             .andExpect(status().isForbidden());
+        db.update("UPDATE issue_report SET status='RESOLVED' WHERE report_id=?", id);
+        mvc.perform(get("/api/machines/1").cookie(student))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("AVAILABLE"))
+            .andExpect(jsonPath("$.hasOpenReport").value(false));
     }
 
     @Test

@@ -18,9 +18,11 @@ For a **fresh local MySQL 8 instance**, import the standalone [team demo dump](s
 
 ```sh
 mysql -u root -p < sql/laundrylab_team_demo.sql
+mysql -u root -p laundrylab < sql/003_machine_signal_source.sql
+mysql -u root -p laundrylab < sql/004_floor_layout.sql
 ```
 
-The dump creates `laundrylab` with 16 tables, five demo machines, and two already verified test accounts: `stu@o365.fcu.edu.tw` and `sup@o365.fcu.edu.tw`, both using `pass12345`. The supervisor is assigned to the demo dormitory. It contains no real user data or login sessions. Use it only for local development; never deploy those credentials. The dump is intended for an empty database and does not delete existing tables. New registrations still require SMTP configuration.
+The dump creates `laundrylab` with 16 tables, five demo machines, and two already verified test accounts: `stu@o365.fcu.edu.tw` and `sup@o365.fcu.edu.tw`, both using `pass12345`. The supervisor is assigned to A棟宿舍; B棟宿舍 starts without a laundry room. It contains no real user data or login sessions. Use it only for local development; never deploy those credentials. The dump is intended for an empty database and does not delete existing tables. New registrations still require SMTP configuration.
 
 Do not commit credentials. Date-times use UTC; the frontend should display local time.
 
@@ -69,3 +71,9 @@ curl -X POST http://localhost:8080/api/signals \
 `SignalFlowTest` verifies start, retry idempotency, duplicate start rejection, pending confirmation, completion, and completion without an active cycle. Apply the migration to the team's MySQL 8 instance before deployment; local tests use a minimal H2 schema and do not validate MySQL DDL.
 
 The SQL schema is for a fresh database; existing databases need a separately reviewed migration before applying these changes. The new endpoints have not been tested against a live MySQL and LINE account in this checkout. LINE API acceptance does not prove delivery or reading. Photo uploads, login abuse controls, and production monitoring remain to be implemented.
+
+## 固定洗衣間位置圖
+
+既有資料庫先執行 `sql/004_floor_layout.sql` 一次；新建資料庫的 `001_schema.sql` 已包含位置欄位。每個洗衣間的 `entrance_side` 可設為 `LEFT`、`RIGHT`、`TOP`、`BOTTOM`，每台機器的 `layout_x`／`layout_y` 是平面圖中的百分比座標（10–90）。A 棟一樓的 A01–A05 已依參考圖配置；未設定座標的機台依固定機台 ID 順序補位，洗程狀態不影響位置。
+
+管理員可在設備總覽的編輯視窗調整入口方向與機台座標。

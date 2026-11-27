@@ -308,6 +308,9 @@ async function submitAddMachine() {
 const editingItem = ref(null) // { level: 'dormitory'|'room'|'machine', id, roomId? } 或 null
 const editName = ref('')
 const editLocation = ref('')
+const editEntrance = ref('RIGHT')
+const editLayoutX = ref('')
+const editLayoutY = ref('')
 const editCode = ref('')
 const editCycleMinutes = ref('')
 const editError = ref('')
@@ -329,6 +332,7 @@ function openEditRoom(room) {
   editingItem.value = { level: 'room', id: room.id }
   editName.value = room.name
   editLocation.value = room.location || ''
+  editEntrance.value = room.entranceSide || 'RIGHT'
   editError.value = ''
 }
 
@@ -336,6 +340,8 @@ function openEditMachine(machine) {
   editingItem.value = { level: 'machine', id: machine.id, roomId: machine.roomId }
   editCode.value = machine.code
   editCycleMinutes.value = String(Math.round(machine.defaultCycleSeconds / 60))
+  editLayoutX.value = machine.layoutX ?? ''
+  editLayoutY.value = machine.layoutY ?? ''
   editError.value = ''
 }
 
@@ -352,6 +358,7 @@ async function submitEdit() {
     try { await facilitiesStore.updateRoom(id, {
       name: editName.value.trim(),
       location: editLocation.value.trim(),
+      entranceSide: editEntrance.value,
     }) } catch { editError.value = '更新失敗'; return }
   } else if (level === 'machine') {
     const code = editCode.value.trim()
@@ -363,7 +370,9 @@ async function submitEdit() {
       return
     }
     const minutes = Number(editCycleMinutes.value) || 0
-    try { await facilitiesStore.updateMachine(id, { code, defaultCycleSeconds: minutes * 60 }) } catch { editError.value = '更新失敗'; return }
+    try { await facilitiesStore.updateMachine(id, { code, defaultCycleSeconds: minutes * 60,
+      layoutX: editLayoutX.value === '' ? null : Number(editLayoutX.value),
+      layoutY: editLayoutY.value === '' ? null : Number(editLayoutY.value) }) } catch { editError.value = '更新失敗'; return }
   }
 
   closeEditModal()
@@ -624,6 +633,10 @@ async function submitEdit() {
                 <label>位置</label>
                 <input v-model="editLocation" placeholder="位置（選填）" />
               </div>
+              <div class="field-group">
+                <label>入口方向</label>
+                <select v-model="editEntrance"><option value="RIGHT">右側</option><option value="LEFT">左側</option><option value="TOP">上方</option><option value="BOTTOM">下方</option></select>
+              </div>
             </template>
 
             <template v-else>
@@ -635,6 +648,14 @@ async function submitEdit() {
               <div class="field-group">
                 <label>預設洗程（分鐘）</label>
                 <input v-model="editCycleMinutes" type="number" required placeholder="分鐘" />
+              </div>
+              <div class="field-group">
+                <label>平面圖位置 X（10–90）</label>
+                <input v-model="editLayoutX" type="number" min="10" max="90" placeholder="左右位置" />
+              </div>
+              <div class="field-group">
+                <label>平面圖位置 Y（10–90）</label>
+                <input v-model="editLayoutY" type="number" min="10" max="90" placeholder="上下位置" />
               </div>
             </template>
 

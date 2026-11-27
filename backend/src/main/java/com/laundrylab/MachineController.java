@@ -35,14 +35,16 @@ public class MachineController {
 
     @GetMapping("/dormitories/{dormitoryId}/rooms")
     public List<Map<String, Object>> rooms(@PathVariable long dormitoryId) {
-        return db.queryForList("SELECT room_id AS id, name, location FROM laundry_room WHERE dormitory_id = ? AND is_active = TRUE ORDER BY room_id", dormitoryId);
+        return db.queryForList("SELECT room_id AS id, name, location, entrance_side AS entranceSide FROM laundry_room WHERE dormitory_id = ? AND is_active = TRUE ORDER BY room_id", dormitoryId);
     }
 
     @GetMapping("/rooms/{roomId}/machines")
     public List<MachineView> machines(@PathVariable long roomId) {
         return db.query("""
-            SELECT m.machine_id, m.machine_code, m.management_status, c.cycle_id,
+            SELECT m.machine_id, m.machine_code, m.layout_x, m.layout_y, m.management_status, c.cycle_id,
                    c.cycle_status, c.estimated_end_at,
+                   EXISTS (SELECT 1 FROM issue_report i WHERE i.machine_id = m.machine_id
+                           AND i.status IN ('OPEN','IN_PROGRESS')) AS has_open_report,
                    (SELECT MAX(s.received_at) FROM machine_signal_log s WHERE s.machine_id = m.machine_id) AS last_signal_at
             FROM machine m LEFT JOIN wash_cycle c ON c.machine_id = m.machine_id
               AND c.cycle_status IN ('RUNNING','PENDING_CONFIRMATION')
@@ -52,15 +54,17 @@ public class MachineController {
                 LocalDateTime last = rs.getObject("last_signal_at", LocalDateTime.class);
                 String management = rs.getString("management_status");
                 String cycle = rs.getString("cycle_status");
+                boolean hasOpenReport = rs.getBoolean("has_open_report");
                 String status = "MAINTENANCE".equals(management) ? "MAINTENANCE"
-                    : cycle == null ? "AVAILABLE"
+                    : cycle == null ? (hasOpenReport ? "REPORTED" : "AVAILABLE")
                     : "PENDING_CONFIRMATION".equals(cycle) || !end.isAfter(LocalDateTime.now(ZoneOffset.UTC))
                         ? "PENDING_CONFIRMATION" : "RUNNING";
                 long cycleId = rs.getLong("cycle_id");
                 return new MachineView(rs.getLong("machine_id"), rs.getString("machine_code"), status,
                     cycleId == 0 ? null : cycleId,
                     end == null ? null : end.toInstant(ZoneOffset.UTC),
-                    last == null ? null : last.toInstant(ZoneOffset.UTC));
+                    last == null ? null : last.toInstant(ZoneOffset.UTC),
+                    rs.getObject("layout_x", Integer.class), rs.getObject("layout_y", Integer.class), hasOpenReport);
             }, roomId);
     }
 
@@ -74,5 +78,6 @@ public class MachineController {
     }
 
     public record MachineView(long id, String machineCode, String status, Long cycleId,
-                              Instant estimatedEndAt, Instant lastSignalAt) {}
+                              Instant estimatedEndAt, Instant lastSignalAt, Integer layoutX, Integer layoutY,
+                              boolean hasOpenReport) {}
 }

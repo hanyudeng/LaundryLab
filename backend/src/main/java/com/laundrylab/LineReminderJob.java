@@ -23,19 +23,28 @@ public class LineReminderJob {
 
     @Scheduled(initialDelay = 60000, fixedDelay = 60000)
     public void run() {
+        db.update("UPDATE notification_log SET send_status = 'CANCELLED', next_attempt_at = NULL WHERE notification_type = 'ESTIMATED_COMPLETE' AND send_status IN ('PENDING','FAILED','SENDING')");
         if (token.isBlank()) return;
         db.update("UPDATE notification_log SET send_status = 'FAILED', next_attempt_at = UTC_TIMESTAMP(3) WHERE send_status = 'SENDING' AND last_attempt_at < UTC_TIMESTAMP(3) - INTERVAL 5 MINUTE");
+        db.update("""
+            UPDATE notification_log n JOIN reminder_subscription s ON s.subscription_id = n.subscription_id
+            JOIN wash_cycle c ON c.cycle_id = s.cycle_id
+            SET n.send_status = 'CANCELLED', n.next_attempt_at = NULL
+            WHERE n.notification_type = 'FIVE_MINUTES_BEFORE'
+              AND n.send_status IN ('PENDING','FAILED') AND c.estimated_end_at <= UTC_TIMESTAMP(3)
+            """);
         queue("FIVE_MINUTES_BEFORE", "c.estimated_end_at <= UTC_TIMESTAMP(3) + INTERVAL 5 MINUTE");
-        queue("ESTIMATED_COMPLETE", "c.estimated_end_at <= UTC_TIMESTAMP(3)");
         var pending = db.queryForList("""
             SELECT n.notification_id AS id, n.line_retry_key AS retryKey, n.recipient_line_user_id AS lineUser,
                    n.notification_type AS type, m.machine_code AS machineCode, n.attempt_count AS attempts
             FROM notification_log n JOIN reminder_subscription s ON s.subscription_id = n.subscription_id
             JOIN wash_cycle c ON c.cycle_id = s.cycle_id JOIN machine m ON m.machine_id = c.machine_id
             JOIN line_account_link l ON l.user_id = s.user_id
-            WHERE n.send_status IN ('PENDING','FAILED') AND n.attempt_count < 3
+            WHERE n.notification_type = 'FIVE_MINUTES_BEFORE'
+              AND n.send_status IN ('PENDING','FAILED') AND n.attempt_count < 3
               AND (n.next_attempt_at IS NULL OR n.next_attempt_at <= UTC_TIMESTAMP(3))
               AND s.status = 'ACTIVE' AND c.cycle_status IN ('RUNNING','PENDING_CONFIRMATION')
+              AND c.estimated_end_at > UTC_TIMESTAMP(3)
               AND l.link_status = 'LINKED' AND l.follow_status = 'FOLLOWING'
               AND l.line_user_id = n.recipient_line_user_id
             ORDER BY n.notification_id LIMIT 50
@@ -51,15 +60,21 @@ public class LineReminderJob {
             JOIN line_account_link l ON l.user_id = s.user_id
             WHERE s.status = 'ACTIVE' AND c.cycle_status IN ('RUNNING','PENDING_CONFIRMATION')
               AND l.link_status = 'LINKED' AND l.follow_status = 'FOLLOWING'
-              AND c.estimated_end_at >= UTC_TIMESTAMP(3) - INTERVAL 1 DAY AND
+              AND c.estimated_end_at > UTC_TIMESTAMP(3) AND
             """ + due, type);
     }
 
     private void send(Map<String, Object> row) {
         long id = ((Number) row.get("id")).longValue();
-        if (db.update("UPDATE notification_log SET send_status = 'SENDING', attempt_count = attempt_count + 1, last_attempt_at = UTC_TIMESTAMP(3) WHERE notification_id = ? AND send_status IN ('PENDING','FAILED')", id) == 0) return;
-        String text = row.get("machineCode") + ("FIVE_MINUTES_BEFORE".equals(row.get("type"))
-            ? " 預計約五分鐘後完成，請以現場狀態為準。" : " 已到預計完成時間；實際完成仍以現場訊號為準。");
+        if (db.update("""
+            UPDATE notification_log n JOIN reminder_subscription s ON s.subscription_id = n.subscription_id
+            JOIN wash_cycle c ON c.cycle_id = s.cycle_id
+            SET n.send_status = 'SENDING', n.attempt_count = n.attempt_count + 1,
+                n.last_attempt_at = UTC_TIMESTAMP(3)
+            WHERE n.notification_id = ? AND n.notification_type = 'FIVE_MINUTES_BEFORE'
+              AND n.send_status IN ('PENDING','FAILED') AND c.estimated_end_at > UTC_TIMESTAMP(3)
+            """, id) == 0) return;
+        String text = row.get("machineCode") + " 預計約五分鐘後完成，請以現場狀態為準。";
         try {
             String body = json.writeValueAsString(Map.of("to", row.get("lineUser"),
                 "messages", List.of(Map.of("type", "text", "text", text))));

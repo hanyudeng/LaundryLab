@@ -99,8 +99,14 @@ const routes = [
     path: '/admin',
     component: AdminLayout,
     meta: { role: 'ADMIN' },
-    redirect: '/admin/account',
+    redirect: '/admin/signal-sources',
     children: [
+      {
+        path: 'signal-sources',
+        name: 'admin-signal-sources',
+        component: () => import('../views/admin/SignalSourcesView.vue'),
+        meta: { title: '訊號來源設定' },
+      },
               {
         path: 'equipment',
         name: 'admin-equipment',

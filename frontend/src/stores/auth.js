@@ -4,7 +4,7 @@ import http from '../api/http'
 export const roleHome = {
   STUDENT: '/student/equipment',
   SUPERVISOR: '/supervisor/equipment',
-  ADMIN: '/admin/account',
+  ADMIN: '/admin/signal-sources',
 }
 
 export const useAuthStore = defineStore('auth', {

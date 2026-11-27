@@ -1,7 +1,7 @@
 CREATE ALIAS UTC_TIMESTAMP FOR "com.laundrylab.H2Functions.utcTimestamp";
 CREATE TABLE dormitory (dormitory_id BIGINT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100), is_active BOOLEAN);
-CREATE TABLE laundry_room (room_id BIGINT AUTO_INCREMENT PRIMARY KEY, dormitory_id BIGINT, name VARCHAR(100), location VARCHAR(255), is_active BOOLEAN);
-CREATE TABLE machine (machine_id BIGINT AUTO_INCREMENT PRIMARY KEY, room_id BIGINT, machine_code VARCHAR(40), management_status VARCHAR(20), default_cycle_seconds BIGINT, is_active BOOLEAN);
+CREATE TABLE laundry_room (room_id BIGINT AUTO_INCREMENT PRIMARY KEY, dormitory_id BIGINT, name VARCHAR(100), location VARCHAR(255), entrance_side VARCHAR(10) DEFAULT 'RIGHT', is_active BOOLEAN);
+CREATE TABLE machine (machine_id BIGINT AUTO_INCREMENT PRIMARY KEY, room_id BIGINT, machine_code VARCHAR(40), layout_x INT, layout_y INT, management_status VARCHAR(20), signal_source VARCHAR(20) DEFAULT 'TEST_PAGE', default_cycle_seconds BIGINT, is_active BOOLEAN);
 CREATE TABLE wash_cycle (cycle_id BIGINT AUTO_INCREMENT PRIMARY KEY, machine_id BIGINT, started_at TIMESTAMP, estimated_end_at TIMESTAMP, completed_at TIMESTAMP, cycle_status VARCHAR(30));
 CREATE TABLE machine_signal_log (signal_id BIGINT AUTO_INCREMENT PRIMARY KEY, source_event_id VARCHAR(100) UNIQUE, source_kind VARCHAR(20), machine_id BIGINT, cycle_id BIGINT, signal_type VARCHAR(20), received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, process_status VARCHAR(20), error_reason VARCHAR(255));
 CREATE TABLE reminder_subscription (subscription_id BIGINT AUTO_INCREMENT PRIMARY KEY, cycle_id BIGINT, status VARCHAR(20));
@@ -15,5 +15,5 @@ CREATE TABLE dorm_supervisor_assignment (supervisor_id BIGINT, dormitory_id BIGI
 CREATE TABLE audit_log (audit_id BIGINT AUTO_INCREMENT PRIMARY KEY, actor_id BIGINT, target_type VARCHAR(50), target_id BIGINT, action VARCHAR(80), before_value VARCHAR(255), after_value VARCHAR(255), reason VARCHAR(500));
 CREATE TABLE issue_report (report_id BIGINT AUTO_INCREMENT PRIMARY KEY, reporter_id BIGINT, machine_id BIGINT, issue_type VARCHAR(30), description VARCHAR(5000), status VARCHAR(30) DEFAULT 'OPEN', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, resolution VARCHAR(5000), handler_id BIGINT);
 INSERT INTO dormitory VALUES (1, 'Demo', TRUE);
-INSERT INTO laundry_room VALUES (1, 1, 'Room', 'First floor', TRUE);
-INSERT INTO machine VALUES (1, 1, 'A01', 'NORMAL', 1800, TRUE);
+INSERT INTO laundry_room (room_id,dormitory_id,name,location,is_active) VALUES (1, 1, 'Room', 'First floor', TRUE);
+INSERT INTO machine (machine_id, room_id, machine_code, management_status, signal_source, default_cycle_seconds, is_active) VALUES (1, 1, 'A01', 'NORMAL', 'TEST_PAGE', 1800, TRUE);
