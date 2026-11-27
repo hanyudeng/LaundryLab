@@ -14,6 +14,8 @@ DB_PORT="${DB_PORT:-3306}"
 DB_NAME="${DB_NAME:-laundrylab}"
 DB_USER="${DB_USER:-root}"
 KEYCHAIN_SERVICE="${KEYCHAIN_SERVICE:-Mysql@localhost:3306}"
+SMTP_KEYCHAIN_SERVICE="${SMTP_KEYCHAIN_SERVICE:-LaundryLab Gmail SMTP}"
+SMTP_USER="${SMTP_USER:-sdsd51116@gmail.com}"
 
 mkdir -p "$RUN_DIR"
 chmod 700 "$RUN_DIR"
@@ -94,13 +96,34 @@ launch_detached() {
 
 SIGNAL_API_KEY="${SIGNAL_API_KEY:-$(openssl rand -hex 24)}"
 LINE_BOT_URL="${LINE_BOT_URL:-https://line.me/R/ti/p/%40014utqjn}"
+smtp_password="${SMTP_PASSWORD:-}"
+if [[ -z "$smtp_password" ]]; then
+  smtp_password="$(security find-generic-password -s "$SMTP_KEYCHAIN_SERVICE" -a "$SMTP_USER" -w 2>/dev/null)" || true
+fi
+smtp_password="${smtp_password//[[:space:]]/}"
+if [[ -n "$smtp_password" ]]; then
+  SMTP_HOST="${SMTP_HOST:-smtp.gmail.com}"
+  SMTP_PORT="${SMTP_PORT:-587}"
+  MAIL_FROM="${MAIL_FROM:-$SMTP_USER}"
+  SMTP_AUTH=true SMTP_STARTTLS=true SMTP_STARTTLS_REQUIRED=true \
+  SMTP_HOST="$SMTP_HOST" SMTP_PORT="$SMTP_PORT" SMTP_USER="$SMTP_USER" \
+  SMTP_PASSWORD="$smtp_password" MAIL_FROM="$MAIL_FROM" \
+  DB_URL="jdbc:mysql://$DB_HOST:$DB_PORT/$DB_NAME?serverTimezone=UTC" \
+  DB_USER="$DB_USER" DB_PASSWORD="$db_password" PORT="$BACKEND_PORT" \
+  AUTH_SECURE_COOKIE=false PUBLIC_BASE_URL="http://127.0.0.1:$FRONTEND_PORT" \
+  SIGNAL_API_KEY="$SIGNAL_API_KEY" LINE_BOT_URL="$LINE_BOT_URL" \
+    launch_detached "laundrylab_backend_${UID}" "$BACKEND_PID_FILE" "$BACKEND_LOG" java -jar "$JAR"
+  echo "Gmail 驗證信寄送已啟用（${SMTP_USER}）。"
+else
+  echo "尚未在鑰匙圈找到 Gmail 應用程式密碼；新帳號驗證信暫不可寄送。" >&2
 DB_URL="jdbc:mysql://$DB_HOST:$DB_PORT/$DB_NAME?serverTimezone=UTC" \
 DB_USER="$DB_USER" DB_PASSWORD="$db_password" PORT="$BACKEND_PORT" \
 AUTH_SECURE_COOKIE=false PUBLIC_BASE_URL="http://127.0.0.1:$FRONTEND_PORT" \
 SIGNAL_API_KEY="$SIGNAL_API_KEY" LINE_BOT_URL="$LINE_BOT_URL" \
   launch_detached "laundrylab_backend_${UID}" "$BACKEND_PID_FILE" "$BACKEND_LOG" java -jar "$JAR"
+fi
 backend_pid="$(cat "$BACKEND_PID_FILE")"
-unset db_password
+unset db_password smtp_password
 
 for _ in {1..40}; do
   if ! kill -0 "$backend_pid" 2>/dev/null; then
