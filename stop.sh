@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_DIR="$ROOT/.local-run"
+"$ROOT/stop-line-tunnel.sh"
 
 stop_process() {
   local name="$1" file="$2" expected="$3" pid command_line
