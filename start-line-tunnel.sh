@@ -55,6 +55,7 @@ if [[ -z "$url" ]]; then
   echo "無法取得 ngrok HTTPS 網址；請查看 $RUN_DIR/line-ngrok.log" >&2
   exit 1
 fi
+python3 "$ROOT/sync-line-webhook.py" "$url/api/line/webhook"
 printf '%s\n' "$url/api/line/webhook" > "$RUN_DIR/line-webhook-url"
 chmod 600 "$RUN_DIR/line-webhook-url"
 trap - EXIT

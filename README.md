@@ -8,7 +8,7 @@
 
 驗證信由 `sdsd51116@gmail.com` 透過 Gmail SMTP 寄出。先在 Google 帳戶建立供 LaundryLab 使用的應用程式密碼，再執行 `./setup-gmail.sh`，依提示貼到 Terminal；腳本會將它存入 macOS 鑰匙圈的 `LaundryLab Gmail SMTP` 項目，密碼不會寫入程式碼。重啟後端時使用 `./stop.sh`、`./start.sh`。若鑰匙圈尚無此項目，網站仍可啟動，但新帳號的驗證信無法寄送。Gmail 帳戶需啟用兩步驟驗證，才可建立應用程式密碼。
 
-LINE 提醒使用「My Laundry Lab」官方帳號。執行 `./setup-line.sh`，依提示將 Channel secret 與 Channel access token 存入 macOS 鑰匙圈，再重新啟動專案。後端會讀取憑證並驗證 LINE Webhook 簽章。需要接收 LINE 綁定訊息時，再執行 `./start-line-tunnel.sh`；腳本會以 ngrok 建立暫時 HTTPS 網址，且只轉送 `/api/line/webhook` 的 POST。將輸出的網址填到 LINE Developers Console 的 Messaging API → Webhook URL，按 Verify，並啟用 Use webhook。網址在重啟 ngrok 後可能改變，需重新確認 LINE 後台設定。執行 `./stop-line-tunnel.sh` 會關閉公開入口；`./stop.sh` 也會先關閉入口再停止前後端。
+LINE 提醒使用「My Laundry Lab」官方帳號。執行 `./setup-line.sh`，依提示將 Channel secret 與 Channel access token 存入 macOS 鑰匙圈，再重新啟動專案。當兩項憑證都存在時，`./start.sh` 會自動以 ngrok 建立暫時 HTTPS 入口、將當次網址同步到 LINE Developers Console，並請 LINE 驗證 Webhook；你不需要另執行 `./start-line-tunnel.sh`。入口只轉送 `/api/line/webhook` 的 POST，後端會驗證 LINE 簽章。LINE 後台的 Use webhook 必須保持啟用。`./stop.sh` 會先關閉公開入口再停止前後端；`./start-line-tunnel.sh`、`./stop-line-tunnel.sh` 仍可單獨控制入口。
 
 學生在「個人設定 → 通知設定」取得 10 分鐘綁定碼後，將頁面的 `link ...` 傳給官方帳號並按「重新檢查」。顯示「已綁定並追蹤」後，可在使用中的機台按鈴鐺訂閱提醒。本機已驗證 A01 的「預計完成前五分鐘」提醒由 LINE API 接受且送達手機。這個 ngrok 入口適合本機測試；正式使用應部署固定的 HTTPS 後端網址。
 

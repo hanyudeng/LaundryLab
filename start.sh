@@ -76,6 +76,7 @@ JAR="$ROOT/backend/target/backend-0.1.0.jar"
 [[ -f "$JAR" ]] || { echo "找不到後端 JAR：$JAR" >&2; exit 1; }
 
 cleanup_on_error() {
+  "$ROOT/stop-line-tunnel.sh" >/dev/null 2>&1 || true
   if [[ -f "$FRONTEND_PID_FILE" ]]; then kill "$(cat "$FRONTEND_PID_FILE")" 2>/dev/null || true; rm -f "$FRONTEND_PID_FILE"; fi
   if [[ -f "$BACKEND_PID_FILE" ]]; then kill "$(cat "$BACKEND_PID_FILE")" 2>/dev/null || true; rm -f "$BACKEND_PID_FILE"; fi
 }
@@ -130,14 +131,16 @@ line_secret="${line_secret//[[:space:]]/}"
 line_token="${line_token//[[:space:]]/}"
 if [[ -n "$line_secret" && -n "$line_token" ]]; then
   backend_env+=("LINE_CHANNEL_SECRET=$line_secret" "LINE_CHANNEL_ACCESS_TOKEN=$line_token")
+  line_configured=true
   echo "LINE Channel 憑證已載入。"
 else
+  line_configured=false
   echo "LINE Channel 憑證尚未完整存入鑰匙圈；LINE 綁定與提醒暫不可用。" >&2
 fi
 launch_detached "laundrylab_backend_${UID}" "$BACKEND_PID_FILE" "$BACKEND_LOG" \
   env "${backend_env[@]}" java -jar "$JAR"
 backend_pid="$(cat "$BACKEND_PID_FILE")"
-unset db_password smtp_password line_secret line_token backend_env
+unset db_password smtp_password line_secret backend_env
 
 for _ in {1..40}; do
   if ! kill -0 "$backend_pid" 2>/dev/null; then
@@ -165,6 +168,12 @@ done
 if [[ "$code" != "200" ]]; then
   echo "前端未在期限內就緒，請查看 $FRONTEND_LOG" >&2; exit 1
 fi
+
+if [[ "$line_configured" == true ]]; then
+  LINE_CHANNEL_ID="$LINE_CHANNEL_ID" LINE_TOKEN_KEYCHAIN_SERVICE="$LINE_TOKEN_KEYCHAIN_SERVICE" LINE_CHANNEL_ACCESS_TOKEN="$line_token" \
+    "$ROOT/start-line-tunnel.sh"
+fi
+unset line_token
 
 trap - EXIT
 echo "前端：http://127.0.0.1:$FRONTEND_PORT/"
