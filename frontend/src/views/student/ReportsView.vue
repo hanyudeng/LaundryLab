@@ -1,9 +1,10 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useReportsStore } from '../../stores/reports'
 
 const reportsStore = useReportsStore()
+onMounted(() => reportsStore.loadReports())
 const router = useRouter()
 
 // 目前展開看時間軸的回報 id，null 代表都沒展開
@@ -43,7 +44,9 @@ function stepNotes(report) {
       </button>
     </div>
 
-    <div class="report-list">
+    <p v-if="reportsStore.error" role="alert">{{ reportsStore.error }} <button type="button" @click="reportsStore.loadReports()">重試</button></p>
+    <p v-else-if="reportsStore.loading" role="status">載入回報中…</p>
+    <div v-else class="report-list">
       <article
         v-for="r in reportsStore.reports"
         :key="r.id"

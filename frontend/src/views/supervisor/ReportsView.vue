@@ -1,8 +1,12 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useReportsStore } from '../../stores/reports'
+import { useAuthStore } from '../../stores/auth'
 
 const reportsStore = useReportsStore()
+const authStore = useAuthStore()
+onMounted(() => reportsStore.loadReports())
+const updateError = ref('')
 
 // 目前選的案件 id，null 代表顯示列表、有值就顯示詳情
 const activeId = ref(null)
@@ -36,13 +40,17 @@ function backToList() {
 }
 
 // 按下更新案件時，把表單內容存回 store，回到列表
-function handleUpdate() {
-  reportsStore.updateReport(activeId.value, {
+async function handleUpdate() {
+  updateError.value = ''
+  try {
+    await reportsStore.updateReport(activeId.value, {
     status: formStatus.value,
     note: formNote.value,
-    handler: '陳怡君',
-  })
-  activeId.value = null
+    })
+    activeId.value = null
+  } catch {
+    updateError.value = '更新失敗，請稍後重試'
+  }
 }
 </script>
 
@@ -70,7 +78,9 @@ function handleUpdate() {
         </button>
       </div>
 
-      <div class="report-list">
+      <p v-if="reportsStore.error" role="alert">{{ reportsStore.error }} <button type="button" @click="reportsStore.loadReports()">重試</button></p>
+      <p v-else-if="reportsStore.loading" role="status">載入回報中…</p>
+      <div v-else class="report-list">
         <article
           v-for="r in filteredReports"
           :key="r.id"
@@ -163,7 +173,8 @@ function handleUpdate() {
               placeholder="填寫檢查結果或處理方式"
             ></textarea>
 
-            <div class="sub">處理人：陳怡君（目前登入的舍監）</div>
+            <div class="sub">處理人：{{ authStore.email }}</div>
+            <p v-if="updateError" role="alert">{{ updateError }}</p>
 
             <div class="btn-row">
               <button class="btn" type="submit">更新案件</button>

@@ -1,21 +1,24 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import MachineCard from '../../components/MachineCard.vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import FloorPlan from '../../components/FloorPlan.vue'
 import { useMachinesStore } from '../../stores/machines'
 import { useCountdown } from '../../composables/useCountdown'
 
 const machinesStore = useMachinesStore()
+let refreshTimer
 onMounted(() => {
   machinesStore.loadMachines()
+  refreshTimer = window.setInterval(() => { if (!document.hidden) machinesStore.loadMachines(true) }, 30000)
+  machinesStore.loadReminders()
 })
+onUnmounted(() => window.clearInterval(refreshTimer))
 const { now } = useCountdown()
-// 狀態的排序優先順序，可用排最前面，維修中排最後面
-const statusRank = { 可用: 0, 使用中: 1, 待確認: 2, 維修中: 3 }
-
 // 下拉選單、篩選 chip 的選項
-const dorms = ['全部宿舍', '第一學生宿舍', '第二學生宿舍']
-const rooms = ['全部洗衣間', 'A 棟洗衣間', 'B 棟洗衣間']
-const statusList = ['全部', '可用', '使用中', '待確認', '維修中']
+const dorms = computed(() => ['全部宿舍', ...machinesStore.dormitories.map((d) => d.name)])
+const rooms = computed(() => ['全部洗衣間', ...machinesStore.rooms
+  .filter((r) => selectedDorm.value === '全部宿舍' || machinesStore.dormitories.find((d) => d.id === r.dormitoryId)?.name === selectedDorm.value)
+  .map((r) => r.name)])
+const statusList = ['全部', '可用', '使用中', '待確認', '待檢查', '維修中']
 
 // 目前選到的篩選條件
 const selectedDorm = ref('全部宿舍')
@@ -34,31 +37,19 @@ function detailText(m) {
   }
   if (m.status === '待確認') return `最後訊號：${m.signal}`
   if (m.status === '維修中') return '設備維修中'
+  if (m.status === '待檢查') return '已有問題回報，請等候檢查'
   return '空間中，可立即使用'
 }
 
 // 套用篩選條件、加上顯示用的欄位、排序後的機台清單
-const filteredMachines = computed(() => {
-  return machinesStore.machines
-    .filter((m) => activeStatus.value === '全部' || m.status === activeStatus.value)
-    .filter((m) => selectedDorm.value === '全部宿舍' || m.dorm === selectedDorm.value)
-    .filter((m) => selectedRoom.value === '全部洗衣間' || m.room === selectedRoom.value)
-    .map((m) => ({
-      ...m,
-      detail: detailText(m),
-      // 只有使用中、待確認的機台才需要鈴鐺按鈕
-      bell: ['使用中', '待確認'].includes(m.status) ? machinesStore.subscribed.has(m.cycleId) : null,
-    }))
-    .sort((a, b) => {
-      const group = statusRank[a.status] - statusRank[b.status]
-      if (group !== 0) return group
-      // 狀態一樣的情況下，使用中的機台依照剩餘時間排序
-      if (a.status === '使用中' && b.status === '使用中') {
-        return a.end - b.end
-      }
-      return a.code.localeCompare(b.code)
-    })
-})
+const floorPlans = computed(() => machinesStore.rooms
+  .filter((room) => selectedDorm.value === '全部宿舍' || machinesStore.dormitories.find((d) => d.id === room.dormitoryId)?.name === selectedDorm.value)
+  .filter((room) => selectedRoom.value === '全部洗衣間' || room.name === selectedRoom.value)
+  .map((room) => ({ ...room, dorm: machinesStore.dormitories.find((d) => d.id === room.dormitoryId)?.name,
+    machines: machinesStore.machines.filter((m) => m.roomId === room.id).map((m) => ({
+      ...m, detail: detailText(m), bell: ['使用中', '待確認'].includes(m.status) ? machinesStore.subscribed.has(m.cycleId) : null,
+    })) })))
+
 </script>
 
 <template>
@@ -66,7 +57,7 @@ const filteredMachines = computed(() => {
     <div class="page-head">
       <h1>設備總覽</h1>
       <div class="selectors">
-        <select v-model="selectedDorm" class="select">
+        <select v-model="selectedDorm" class="select" @change="selectedRoom = '全部洗衣間'">
           <option v-for="d in dorms" :key="d">{{ d }}</option>
         </select>
         <select v-model="selectedRoom" class="select">
@@ -88,27 +79,22 @@ const filteredMachines = computed(() => {
              </button>
     </div>
 
-    <div class="machine-grid">
-      <MachineCard
-  v-for="m in filteredMachines"
-  :key="m.code"
-  :machine="m"
->
-  <template v-if="m.bell !== null" #action>
-    <button
-      type="button"
-      class="bell"
-      :class="{ on: m.bell }"
-      :aria-label="m.bell ? '取消訂閱提醒' : '訂閱提醒'"
-     @click="machinesStore.toggleBell(m.cycleId)"
-    >
-      <span class="material-symbols-outlined">
-        {{ m.bell ? 'notifications_active' : 'notifications_off' }}
-      </span>
-    </button>
-  </template>
-</MachineCard>
-      <p v-if="filteredMachines.length === 0" class="empty">沒有符合條件的機台</p>
+    <p v-if="machinesStore.error" role="alert">{{ machinesStore.error }} <button type="button" @click="machinesStore.loadMachines()">重試</button></p>
+    <p v-if="machinesStore.reminderError" role="alert">{{ machinesStore.reminderError }}</p>
+    <p v-else-if="machinesStore.loading" role="status">載入設備中…</p>
+    <div v-else class="floor-plans">
+      <section v-for="room in floorPlans" :key="room.id" class="floor-section">
+        <h2>{{ room.dorm }} · {{ room.name }}</h2>
+        <FloorPlan :machines="room.machines" :entrance-side="room.entranceSide" :active-status="activeStatus">
+          <template #action="{ machine }">
+            <button v-if="machine.bell !== null" type="button" class="bell" :class="{ on: machine.bell }"
+              :aria-label="machine.bell ? '取消訂閱提醒' : '訂閱提醒'" @click="machinesStore.toggleBell(machine.cycleId)">
+              <span class="material-symbols-outlined">{{ machine.bell ? 'notifications_active' : 'notifications_off' }}</span>
+            </button>
+          </template>
+        </FloorPlan>
+      </section>
+      <p v-if="floorPlans.length === 0" class="empty">這個宿舍目前沒有洗衣間</p>
     </div>
 
     <p class="hint">ⓘ 可用狀態僅供參考，實際仍以現場為準</p>
@@ -174,12 +160,9 @@ const filteredMachines = computed(() => {
 
 
 
-/* 機台卡片的格線排版 */
-.machine-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
-}
+/* 每個樓層保留自己的固定平面圖 */
+.floor-plans { display: grid; gap: 24px; }
+.floor-section h2 { color: var(--navy); font-size: 18px; margin: 0 0 10px; }
 
 /* 沒有符合條件時顯示的提示 */
 .empty {

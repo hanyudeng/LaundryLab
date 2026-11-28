@@ -38,6 +38,7 @@ CREATE TABLE laundry_room (
   dormitory_id BIGINT UNSIGNED NOT NULL,
   name VARCHAR(100) NOT NULL,
   location VARCHAR(255) NULL,
+  entrance_side ENUM('LEFT','RIGHT','TOP','BOTTOM') NOT NULL DEFAULT 'RIGHT',
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   UNIQUE (dormitory_id, name),
   FOREIGN KEY (dormitory_id) REFERENCES dormitory(dormitory_id)
@@ -46,7 +47,10 @@ CREATE TABLE machine (
   machine_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   room_id BIGINT UNSIGNED NOT NULL,
   machine_code VARCHAR(40) NOT NULL,
+  layout_x TINYINT UNSIGNED NULL,
+  layout_y TINYINT UNSIGNED NULL,
   management_status ENUM('NORMAL','MAINTENANCE') NOT NULL DEFAULT 'NORMAL',
+  signal_source ENUM('TEST_PAGE','IOT_SWITCH') NOT NULL DEFAULT 'TEST_PAGE',
   default_cycle_seconds INT UNSIGNED NOT NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),

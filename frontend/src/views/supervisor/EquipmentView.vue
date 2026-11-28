@@ -1,26 +1,35 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import MachineCard from '../../components/MachineCard.vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import FloorPlan from '../../components/FloorPlan.vue'
 import { useMachinesStore } from '../../stores/machines'
 import { useCountdown } from '../../composables/useCountdown'
 
 const machinesStore = useMachinesStore()
+let refreshTimer
 onMounted(() => {
   machinesStore.loadMachines()
+  refreshTimer = window.setInterval(() => { if (!document.hidden) machinesStore.loadMachines(true) }, 30000)
 })
+onUnmounted(() => window.clearInterval(refreshTimer))
 const { now } = useCountdown()
 
-const dorms = ['全部宿舍', '第一學生宿舍', '第二學生宿舍']
-const rooms = ['全部洗衣間', 'A 棟洗衣間', 'B 棟洗衣間']
-const statusList = ['全部', '可用', '使用中', '待確認', '維修中']
+const dorms = computed(() => ['全部宿舍', ...machinesStore.dormitories.map((d) => d.name)])
+const rooms = computed(() => ['全部洗衣間', ...machinesStore.rooms
+  .filter((r) => selectedDorm.value === '全部宿舍' || machinesStore.dormitories.find((d) => d.id === r.dormitoryId)?.name === selectedDorm.value)
+  .map((r) => r.name)])
+const statusList = ['全部', '可用', '使用中', '待確認', '待檢查', '維修中']
 
 const selectedDorm = ref('全部宿舍')
 const selectedRoom = ref('全部洗衣間')
 const activeStatus = ref('全部')
 const searchText = ref('')
-
-// 狀態的排序優先順序，可用排最前面，維修中排最後面
-const statusRank = { 可用: 0, 使用中: 1, 待確認: 2, 維修中: 3 }
+const actionError = ref('')
+async function toggleMaintenance(machine) {
+  const reason = window.prompt(machine.status === '維修中' ? '請填寫解除維修原因' : '請填寫設為維修中的原因')
+  if (!reason?.trim()) return
+  try { await machinesStore.toggleMaintenance(machine.id, reason.trim()); actionError.value = '' }
+  catch { actionError.value = '更新維修狀態失敗' }
+}
 
 // 根據狀態決定卡片上要顯示的說明文字，跟學生端同一套邏輯
 function detailText(m) {
@@ -32,22 +41,17 @@ function detailText(m) {
   }
   if (m.status === '待確認') return `最後訊號：${m.signal}`
   if (m.status === '維修中') return '設備維修中'
+  if (m.status === '待檢查') return '已有問題回報，請檢查處理'
   return '空間中，可立即使用'
 }
 
 // 套用篩選條件（含搜尋機台編號）、排序後的機台清單
-const filteredMachines = computed(() => {
-  return machinesStore.machines
-    .filter((m) => activeStatus.value === '全部' || m.status === activeStatus.value)
-    .filter((m) => selectedDorm.value === '全部宿舍' || m.dorm === selectedDorm.value)
-    .filter((m) => selectedRoom.value === '全部洗衣間' || m.room === selectedRoom.value)
-    .filter((m) => m.code.toLowerCase().includes(searchText.value.trim().toLowerCase()))
-    .map((m) => ({
-      ...m,
-      detail: detailText(m),
-    }))
-    .sort((a, b) => statusRank[a.status] - statusRank[b.status] || a.code.localeCompare(b.code))
-})
+const floorPlans = computed(() => machinesStore.rooms
+  .filter((room) => selectedDorm.value === '全部宿舍' || machinesStore.dormitories.find((d) => d.id === room.dormitoryId)?.name === selectedDorm.value)
+  .filter((room) => selectedRoom.value === '全部洗衣間' || room.name === selectedRoom.value)
+  .map((room) => ({ ...room, dorm: machinesStore.dormitories.find((d) => d.id === room.dormitoryId)?.name,
+    machines: machinesStore.machines.filter((m) => m.roomId === room.id).map((m) => ({ ...m, detail: detailText(m) })) })))
+
 </script>
 
 <template>
@@ -58,7 +62,7 @@ const filteredMachines = computed(() => {
         <p>管理受指派宿舍的洗衣設備</p>
       </div>
       <div class="selectors">
-        <select v-model="selectedDorm" class="select">
+        <select v-model="selectedDorm" class="select" @change="selectedRoom = '全部洗衣間'">
           <option v-for="d in dorms" :key="d">{{ d }}</option>
         </select>
         <select v-model="selectedRoom" class="select">
@@ -84,24 +88,24 @@ const filteredMachines = computed(() => {
       </button>
     </div>
 
-    <div class="machine-grid">
-      <MachineCard v-for="m in filteredMachines" :key="m.code" :machine="m">
-        <template #action>
-          <button
-            type="button"
-            class="icon-action"
-            :class="{ release: m.status === '維修中' }"
-            :aria-label="m.status === '維修中' ? '解除維修' : '設為維修中'"
-            @click="machinesStore.toggleMaintenance(m.code)"
-          >
-            <span class="material-symbols-outlined">build</span>
-          </button>
-        </template>
-      </MachineCard>
-      <p v-if="filteredMachines.length === 0" class="empty">目前沒有符合條件的設備</p>
+    <p v-if="machinesStore.error || actionError" role="alert">{{ machinesStore.error || actionError }} <button type="button" @click="machinesStore.loadMachines()">重試</button></p>
+    <p v-else-if="machinesStore.loading" role="status">載入設備中…</p>
+    <div v-else class="floor-plans">
+      <section v-for="room in floorPlans" :key="room.id" class="floor-section">
+        <h2>{{ room.dorm }} · {{ room.name }}</h2>
+        <FloorPlan :machines="room.machines" :entrance-side="room.entranceSide" :active-status="activeStatus" :search-text="searchText">
+          <template #action="{ machine }">
+            <button type="button" class="icon-action" :class="{ release: machine.status === '維修中' }"
+              :aria-label="machine.status === '維修中' ? '解除維修' : '設為維修中'" @click="toggleMaintenance(machine)">
+              <span class="material-symbols-outlined">build</span>
+            </button>
+          </template>
+        </FloorPlan>
+      </section>
+      <p v-if="floorPlans.length === 0" class="empty">這個宿舍目前沒有洗衣間</p>
     </div>
 
-    <p class="hint">設備狀態會依現場訊號更新；維修設定僅供原型操作示意。</p>
+    <p class="hint">設備狀態會依現場訊號更新。</p>
   </div>
 </template>
 
@@ -191,11 +195,8 @@ const filteredMachines = computed(() => {
   border-color: var(--navy);
 }
 
-.machine-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
-}
+.floor-plans { display: grid; gap: 24px; }
+.floor-section h2 { color: var(--navy); font-size: 18px; margin: 0 0 10px; }
 
 .empty {
   grid-column: 1 / -1;

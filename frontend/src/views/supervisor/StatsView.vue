@@ -1,12 +1,25 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import http from '../../api/http'
 import { useMachinesStore } from '../../stores/machines'
 import { useReportsStore } from '../../stores/reports'
 
 const router = useRouter()
 const machinesStore = useMachinesStore()
 const reportsStore = useReportsStore()
+const hours = ref([])
+const machineCycles = ref([])
+const statsError = ref('')
+async function loadStats() {
+  try {
+    const { data } = await http.get('/api/supervisor/stats')
+    hours.value = data.hours
+    machineCycles.value = data.machines
+    statsError.value = ''
+  } catch { statsError.value = '無法取得統計資料' }
+}
+onMounted(() => { machinesStore.loadMachines(); reportsStore.loadReports(); loadStats() })
 
 const machineStatusDefs = [
   { status: '可用', icon: 'check_circle' },
@@ -60,34 +73,17 @@ function goToReports() {
   router.push('/supervisor/reports')
 }
 
-// 假資料：熱門時段，8 個時段的使用人次
-const popularHours = [
-  { time: '08', value: 16 },
-  { time: '10', value: 27 },
-  { time: '12', value: 42 },
-  { time: '14', value: 60 },
-  { time: '16', value: 78 },
-  { time: '18', value: 91 },
-  { time: '20', value: 77 },
-  { time: '22', value: 53 },
-]
-const peakValue = Math.max(...popularHours.map((h) => h.value))
-
-// 假資料：各機台使用率
-const usageRates = [
-  { code: 'A01', percent: 72 },
-  { code: 'A02', percent: 88 },
-  { code: 'A03', percent: 61 },
-  { code: 'B01', percent: 43 },
-  { code: 'B02', percent: 18 },
-]
+const popularHours = computed(() => hours.value.map((h) => ({ time: String(h.hour).padStart(2, '0'), value: Number(h.cycles) })))
+const peakValue = computed(() => Math.max(1, ...popularHours.value.map((h) => h.value)))
+const usageRates = computed(() => machineCycles.value.map((m) => ({ code: m.code, cycles: Number(m.cycles) })))
 </script>
 
 <template>
   <div class="stats-view">
     <div class="page-head">
       <h1>宿舍統計</h1>
-      <p>第一學生宿舍・全部洗衣間</p>
+      <p>受指派宿舍・最近七天</p>
+      <p v-if="statsError || machinesStore.error || reportsStore.error" role="alert">{{ statsError || machinesStore.error || reportsStore.error }} <button type="button" @click="loadStats(); machinesStore.loadMachines(); reportsStore.loadReports()">重試</button></p>
     </div>
 
     <div class="stats-block">
@@ -139,7 +135,7 @@ const usageRates = [
       <div class="chart-grid">
         <section class="chart-panel">
           <h3>熱門時段</h3>
-          <p class="chart-caption">假資料・設備使用人次</p>
+          <p class="chart-caption">最近七天・啟動次數</p>
           <div class="popular-chart">
             <div v-for="h in popularHours" :key="h.time" class="popular-column">
               <span class="popular-value">{{ h.value }}</span>
@@ -151,22 +147,22 @@ const usageRates = [
               <span class="popular-time">{{ h.time }}</span>
             </div>
           </div>
-          <p class="chart-note">時段為原型示意，數據尚未串接實際使用紀錄。</p>
+          <p class="chart-note">依洗衣週期開始時間統計；空白代表尚無紀錄。</p>
         </section>
 
         <section class="chart-panel">
-          <h3>機台使用率</h3>
-          <p class="chart-caption">假資料・依機台估算</p>
+          <h3>機台啟動次數</h3>
+          <p class="chart-caption">最近七天・依機台統計</p>
           <div class="usage-list">
             <div v-for="u in usageRates" :key="u.code" class="usage-row">
               <span class="usage-code">{{ u.code }}</span>
               <div class="usage-track">
-                <div class="usage-fill" :style="{ width: u.percent + '%' }"></div>
+                <div class="usage-fill" :style="{ width: Math.min(100, u.cycles * 10) + '%' }"></div>
               </div>
-              <span class="usage-percent">{{ u.percent }}%</span>
+              <span class="usage-percent">{{ u.cycles }} 次</span>
             </div>
           </div>
-          <p class="chart-note">使用率為原型假資料。</p>
+          <p class="chart-note">此處顯示啟動次數，尚未計算時間使用率。</p>
         </section>
       </div>
     </div>

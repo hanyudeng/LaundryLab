@@ -2,3 +2,5 @@ backend/target/
 .DS_Store
 .env
 *.log
+.local-run/
+__pycache__/

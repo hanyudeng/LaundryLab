@@ -1,68 +1,36 @@
 import { defineStore } from 'pinia'
+import http from '../api/http'
 
 export const useFacilitiesStore = defineStore('facilities', {
-  state: () => ({
-    dormitories: [
-      { id: 1, name: '第一學生宿舍', isActive: true },
-      { id: 2, name: '第二學生宿舍', isActive: true },
-    ],
-    rooms: [
-      { id: 1, dormitoryId: 1, name: 'A 棟洗衣間', location: '一樓東側', isActive: true },
-      { id: 2, dormitoryId: 1, name: 'B 棟洗衣間', location: '一樓西側', isActive: true },
-      { id: 3, dormitoryId: 2, name: 'C 棟洗衣間', location: '二樓', isActive: true },
-    ],
-    machines: [
-      { id: 1, roomId: 1, code: 'A01', defaultCycleSeconds: 2700, isActive: true },
-      { id: 2, roomId: 1, code: 'A02', defaultCycleSeconds: 2700, isActive: true },
-      { id: 3, roomId: 2, code: 'B01', defaultCycleSeconds: 3000, isActive: true },
-      { id: 4, roomId: 2, code: 'B02', defaultCycleSeconds: 3000, isActive: true },
-      { id: 5, roomId: 3, code: 'C01', defaultCycleSeconds: 2700, isActive: true },
-    ],
-  }),
+  state: () => ({ dormitories: [], rooms: [], machines: [], error: '' }),
   actions: {
-    addDormitory(name) {
-      const id = Date.now()
-      this.dormitories.push({ id, name, isActive: true })
-      return id
+    async load() {
+      this.error = ''
+      try {
+        const { data } = await http.get('/api/admin/facilities')
+        this.dormitories = data.dormitories
+        this.rooms = data.rooms
+        this.machines = data.machines
+      } catch {
+        this.error = '無法取得設備設定'
+      }
     },
-    updateDormitory(id, { name }) {
-      const dormitory = this.dormitories.find((d) => d.id === id)
-      if (!dormitory) return
-      dormitory.name = name
+    async create(type, payload) {
+      await http.post(`/api/admin/facilities/${type}`, payload)
+      await this.load()
     },
-    setDormitoryActive(id, isActive) {
-      const dormitory = this.dormitories.find((d) => d.id === id)
-      if (dormitory) dormitory.isActive = isActive
+    async update(type, id, payload) {
+      await http.put(`/api/admin/facilities/${type}/${id}`, payload)
+      await this.load()
     },
-    addRoom(dormitoryId, name, location) {
-      const id = Date.now()
-      this.rooms.push({ id, dormitoryId, name, location, isActive: true })
-      return id
-    },
-    updateRoom(id, { name, location }) {
-      const room = this.rooms.find((r) => r.id === id)
-      if (!room) return
-      room.name = name
-      room.location = location
-    },
-    setRoomActive(id, isActive) {
-      const room = this.rooms.find((r) => r.id === id)
-      if (room) room.isActive = isActive
-    },
-    addMachine(roomId, code, defaultCycleSeconds) {
-      const id = Date.now()
-      this.machines.push({ id, roomId, code, defaultCycleSeconds, isActive: true })
-      return id
-    },
-    updateMachine(id, { code, defaultCycleSeconds }) {
-      const machine = this.machines.find((m) => m.id === id)
-      if (!machine) return
-      machine.code = code
-      machine.defaultCycleSeconds = defaultCycleSeconds
-    },
-    setMachineActive(id, isActive) {
-      const machine = this.machines.find((m) => m.id === id)
-      if (machine) machine.isActive = isActive
-    },
+    addDormitory(name) { return this.create('dormitories', { name }) },
+    updateDormitory(id, payload) { return this.update('dormitories', id, payload) },
+    setDormitoryActive(id, isActive) { return this.update('dormitories', id, { isActive }) },
+    addRoom(dormitoryId, name, location) { return this.create('rooms', { dormitoryId, name, location }) },
+    updateRoom(id, payload) { return this.update('rooms', id, payload) },
+    setRoomActive(id, isActive) { return this.update('rooms', id, { isActive }) },
+    addMachine(roomId, code, defaultCycleSeconds) { return this.create('machines', { roomId, code, defaultCycleSeconds }) },
+    updateMachine(id, payload) { return this.update('machines', id, payload) },
+    setMachineActive(id, isActive) { return this.update('machines', id, { isActive }) },
   },
 })

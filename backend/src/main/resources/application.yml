@@ -14,9 +14,14 @@ spring:
     properties:
       mail.smtp.auth: ${SMTP_AUTH:false}
       mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.starttls.required: ${SMTP_STARTTLS_REQUIRED:false}
 server:
   port: ${PORT:8080}
 app:
+  line:
+    channel-secret: ${LINE_CHANNEL_SECRET:}
+    channel-access-token: ${LINE_CHANNEL_ACCESS_TOKEN:}
+    bot-url: ${LINE_BOT_URL:}
   signal-key: ${SIGNAL_API_KEY:}
   auth:
     allowed-email-domain: ${SCHOOL_EMAIL_DOMAIN:o365.fcu.edu.tw}

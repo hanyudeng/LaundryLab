@@ -1,8 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useFacilitiesStore } from '../../stores/facilities'
 
 const facilitiesStore = useFacilitiesStore()
+onMounted(() => facilitiesStore.load())
+const actionError = ref('')
 
 // 搜尋機台編號、依宿舍/洗衣間篩選、啟用狀態篩選
 const search = ref('')
@@ -192,11 +194,16 @@ function closeBatchConfirm() {
   showBatchConfirmModal.value = false
 }
 
-function applyBatchConfirm() {
+async function applyBatchConfirm() {
   const isActive = selectionMode.value === 'enable'
-  selectedDormitoryIds.value.forEach((id) => facilitiesStore.setDormitoryActive(id, isActive))
-  selectedRoomIds.value.forEach((id) => facilitiesStore.setRoomActive(id, isActive))
-  selectedMachineIds.value.forEach((id) => facilitiesStore.setMachineActive(id, isActive))
+  try {
+    for (const id of selectedDormitoryIds.value) await facilitiesStore.setDormitoryActive(id, isActive)
+    for (const id of selectedRoomIds.value) await facilitiesStore.setRoomActive(id, isActive)
+    for (const id of selectedMachineIds.value) await facilitiesStore.setMachineActive(id, isActive)
+  } catch {
+    actionError.value = '更新失敗，請重新載入確認狀態'
+    return
+  }
   showBatchConfirmModal.value = false
   selectionMode.value = null
   clearSelection()
@@ -217,10 +224,10 @@ function cancelAddDormitory() {
   newDormitoryName.value = ''
 }
 
-function submitAddDormitory() {
+async function submitAddDormitory() {
   const name = newDormitoryName.value.trim()
   if (!name) return
-  facilitiesStore.addDormitory(name)
+  try { await facilitiesStore.addDormitory(name) } catch { actionError.value = '新增宿舍失敗'; return }
   cancelAddDormitory()
 }
 
@@ -240,10 +247,10 @@ function cancelAddRoom() {
   addRoomForDormitoryId.value = null
 }
 
-function submitAddRoom(dormitoryId) {
+async function submitAddRoom(dormitoryId) {
   const name = newRoomName.value.trim()
   if (!name) return
-  facilitiesStore.addRoom(dormitoryId, name, newRoomLocation.value.trim())
+  try { await facilitiesStore.addRoom(dormitoryId, name, newRoomLocation.value.trim()) } catch { actionError.value = '新增洗衣間失敗'; return }
   cancelAddRoom()
 }
 
@@ -274,7 +281,7 @@ function closeAddMachineModal() {
   showAddMachineModal.value = false
 }
 
-function submitAddMachine() {
+async function submitAddMachine() {
   addMachineError.value = ''
   const roomId = Number(addMachineRoomId.value)
   const code = addMachineCode.value.trim()
@@ -287,7 +294,7 @@ function submitAddMachine() {
   }
 
   const minutes = Number(addMachineCycleMinutes.value) || 0
-  facilitiesStore.addMachine(roomId, code, minutes * 60)
+  try { await facilitiesStore.addMachine(roomId, code, minutes * 60) } catch { addMachineError.value = '新增失敗，請檢查資料'; return }
 
   // 新增完直接把篩選切到這個洗衣間，馬上看到結果
   dormitoryFilter.value = addMachineDormitoryId.value
@@ -301,6 +308,9 @@ function submitAddMachine() {
 const editingItem = ref(null) // { level: 'dormitory'|'room'|'machine', id, roomId? } 或 null
 const editName = ref('')
 const editLocation = ref('')
+const editEntrance = ref('RIGHT')
+const editLayoutX = ref('')
+const editLayoutY = ref('')
 const editCode = ref('')
 const editCycleMinutes = ref('')
 const editError = ref('')
@@ -322,6 +332,7 @@ function openEditRoom(room) {
   editingItem.value = { level: 'room', id: room.id }
   editName.value = room.name
   editLocation.value = room.location || ''
+  editEntrance.value = room.entranceSide || 'RIGHT'
   editError.value = ''
 }
 
@@ -329,6 +340,8 @@ function openEditMachine(machine) {
   editingItem.value = { level: 'machine', id: machine.id, roomId: machine.roomId }
   editCode.value = machine.code
   editCycleMinutes.value = String(Math.round(machine.defaultCycleSeconds / 60))
+  editLayoutX.value = machine.layoutX ?? ''
+  editLayoutY.value = machine.layoutY ?? ''
   editError.value = ''
 }
 
@@ -336,16 +349,17 @@ function closeEditModal() {
   editingItem.value = null
 }
 
-function submitEdit() {
+async function submitEdit() {
   const { level, id } = editingItem.value
 
   if (level === 'dormitory') {
-    facilitiesStore.updateDormitory(id, { name: editName.value.trim() })
+    try { await facilitiesStore.updateDormitory(id, { name: editName.value.trim() }) } catch { editError.value = '更新失敗'; return }
   } else if (level === 'room') {
-    facilitiesStore.updateRoom(id, {
+    try { await facilitiesStore.updateRoom(id, {
       name: editName.value.trim(),
       location: editLocation.value.trim(),
-    })
+      entranceSide: editEntrance.value,
+    }) } catch { editError.value = '更新失敗'; return }
   } else if (level === 'machine') {
     const code = editCode.value.trim()
     const duplicate = facilitiesStore.machines.some(
@@ -356,7 +370,9 @@ function submitEdit() {
       return
     }
     const minutes = Number(editCycleMinutes.value) || 0
-    facilitiesStore.updateMachine(id, { code, defaultCycleSeconds: minutes * 60 })
+    try { await facilitiesStore.updateMachine(id, { code, defaultCycleSeconds: minutes * 60,
+      layoutX: editLayoutX.value === '' ? null : Number(editLayoutX.value),
+      layoutY: editLayoutY.value === '' ? null : Number(editLayoutY.value) }) } catch { editError.value = '更新失敗'; return }
   }
 
   closeEditModal()
@@ -365,6 +381,7 @@ function submitEdit() {
 
 <template>
   <div class="settings-view">
+    <p v-if="facilitiesStore.error || actionError" role="alert">{{ facilitiesStore.error || actionError }} <button type="button" @click="facilitiesStore.load()">重試</button></p>
     <div class="page-head">
       <h1>設備總覽</h1>
     </div>
@@ -616,6 +633,10 @@ function submitEdit() {
                 <label>位置</label>
                 <input v-model="editLocation" placeholder="位置（選填）" />
               </div>
+              <div class="field-group">
+                <label>入口方向</label>
+                <select v-model="editEntrance"><option value="RIGHT">右側</option><option value="LEFT">左側</option><option value="TOP">上方</option><option value="BOTTOM">下方</option></select>
+              </div>
             </template>
 
             <template v-else>
@@ -627,6 +648,14 @@ function submitEdit() {
               <div class="field-group">
                 <label>預設洗程（分鐘）</label>
                 <input v-model="editCycleMinutes" type="number" required placeholder="分鐘" />
+              </div>
+              <div class="field-group">
+                <label>平面圖位置 X（10–90）</label>
+                <input v-model="editLayoutX" type="number" min="10" max="90" placeholder="左右位置" />
+              </div>
+              <div class="field-group">
+                <label>平面圖位置 Y（10–90）</label>
+                <input v-model="editLayoutY" type="number" min="10" max="90" placeholder="上下位置" />
               </div>
             </template>
 

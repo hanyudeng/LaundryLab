@@ -20,7 +20,8 @@ public class ApiAuthInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String path = request.getRequestURI();
         if (path.equals("/api/auth/register") || path.equals("/api/auth/verify")
-                || path.equals("/api/auth/login") || path.equals("/api/signals")) return true;
+                || path.equals("/api/auth/login") || path.equals("/api/signals")
+                || path.equals("/api/line/webhook")) return true;
         AuthController.User user = auth.sessionUser(sessionToken(request));
         if (user == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required");
         if (path.startsWith("/api/admin/") && !user.role().equals("ADMIN"))

@@ -1,21 +1,16 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useReportsStore } from '../../stores/reports'
+import { useMachinesStore } from '../../stores/machines'
 
 const router = useRouter()
 const reportsStore = useReportsStore()
+const machinesStore = useMachinesStore()
+onMounted(() => machinesStore.loadMachines())
 
 // 宿舍 → 洗衣間 → 機台的對應表，用來做連動下拉選單
-const roomMap = {
-  第一學生宿舍: ['A 棟洗衣間', 'B 棟洗衣間'],
-  第二學生宿舍: ['C 棟洗衣間'],
-}
-const machineMap = {
-  'A 棟洗衣間': ['A01', 'A02'],
-  'B 棟洗衣間': ['B01', 'B02'],
-  'C 棟洗衣間': ['C01', 'C02'],
-}
+const dormOptions = computed(() => machinesStore.dormitories.map((d) => d.name))
 
 const kinds = ['設備故障', '狀態顯示錯誤', '其他']
 
@@ -24,11 +19,11 @@ const room = ref('')
 const machine = ref('')
 const kind = ref('')
 const desc = ref('')
-const photoName = ref('')
+const submitError = ref('')
 
 // 根據選的宿舍/洗衣間，算出下一層下拉選單可以選的選項
-const roomOptions = computed(() => roomMap[dorm.value] || [])
-const machineOptions = computed(() => machineMap[room.value] || [])
+const roomOptions = computed(() => [...new Set(machinesStore.machines.filter((m) => m.dorm === dorm.value).map((m) => m.room))])
+const machineOptions = computed(() => machinesStore.machines.filter((m) => m.dorm === dorm.value && m.room === room.value))
 
 // 換了宿舍，下面已選的洗衣間、機台要清空，避免選到不屬於這個宿舍的洗衣間
 function onDormChange() {
@@ -39,11 +34,6 @@ function onDormChange() {
 // 換了洗衣間，已選的機台要清空
 function onRoomChange() {
   machine.value = ''
-}
-
-function onPhotoChange(e) {
-  const file = e.target.files[0]
-  photoName.value = file ? file.name : ''
 }
 
 // 每個欄位的錯誤訊息，用一個物件存，key 是欄位名稱
@@ -60,18 +50,16 @@ function validate() {
   return Object.keys(next).length === 0
 }
 
-function handleSubmit() {
+async function handleSubmit() {
   if (!validate()) return
-
-  reportsStore.addReport({
-    dorm: dorm.value,
-    room: room.value,
-    machine: machine.value,
-    kind: kind.value,
-    desc: desc.value,
-  })
-
-  router.push('/student/reports')
+  try {
+    await reportsStore.addReport({ machineId: Number(machine.value), issueType: {
+      '設備故障': 'FAULT', '狀態顯示錯誤': 'STATUS_MISMATCH', '其他': 'OTHER',
+    }[kind.value], description: desc.value.trim() })
+    router.push('/student/reports')
+  } catch {
+    submitError.value = '送出失敗，請稍後重試'
+  }
 }
 </script>
 
@@ -88,7 +76,7 @@ function handleSubmit() {
       <label for="dorm">選擇宿舍</label>
       <select id="dorm" v-model="dorm" @change="onDormChange">
         <option value="">請選擇宿舍</option>
-        <option v-for="d in Object.keys(roomMap)" :key="d">{{ d }}</option>
+        <option v-for="d in dormOptions" :key="d">{{ d }}</option>
       </select>
       <p v-if="errors.dorm" class="field-error">⚠ {{ errors.dorm }}</p>
 
@@ -102,7 +90,7 @@ function handleSubmit() {
       <label for="machine">選擇洗衣機</label>
       <select id="machine" v-model="machine" :disabled="!room">
         <option value="">請先選擇洗衣間</option>
-        <option v-for="m in machineOptions" :key="m">{{ m }}</option>
+        <option v-for="m in machineOptions" :key="m.id" :value="m.id">{{ m.code }}</option>
       </select>
       <p v-if="errors.machine" class="field-error">⚠ {{ errors.machine }}</p>
 
@@ -117,12 +105,8 @@ function handleSubmit() {
       <textarea id="desc" v-model="desc" placeholder="請簡單描述遇到的狀況"></textarea>
       <p v-if="errors.desc" class="field-error">⚠ {{ errors.desc }}</p>
 
-      <label>附上照片（選填）</label>
-      <label class="file-label">
-  <span>{{ photoName || '附上照片' }}</span>
-  <input type="file" accept="image/*" @change="onPhotoChange" />
-</label>
-
+      <p v-if="machinesStore.error" role="alert">{{ machinesStore.error }}</p>
+      <p v-if="submitError" role="alert">{{ submitError }}</p>
       <div class="btn-row">
         <button class="btn" type="submit">送出回報</button>
       </div>

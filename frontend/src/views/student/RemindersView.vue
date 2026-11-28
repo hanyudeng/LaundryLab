@@ -1,10 +1,11 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import MachineCard from '../../components/MachineCard.vue'
 import { useMachinesStore } from '../../stores/machines'
 import { useCountdown } from '../../composables/useCountdown'
 
 const machinesStore = useMachinesStore()
+onMounted(() => { machinesStore.loadMachines(); machinesStore.loadReminders() })
 const { now } = useCountdown()
 
 // 根據狀態決定卡片上要顯示的說明文字，跟設備總覽同一套邏輯
@@ -36,6 +37,7 @@ const subscribedMachines = computed(() => {
     <div class="page-head">
       <h1>我的提醒</h1>
     </div>
+    <p v-if="machinesStore.reminderError || machinesStore.error" role="alert">{{ machinesStore.reminderError || machinesStore.error }}</p>
 
     <div class="machine-list">
       <MachineCard

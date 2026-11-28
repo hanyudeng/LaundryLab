@@ -12,6 +12,7 @@ const statusClassMap = {
   使用中: 'running',
   待確認: 'pending',
   維修中: 'maintenance',
+  待檢查: 'reported',
 }
 </script>
 
@@ -24,6 +25,7 @@ const statusClassMap = {
       <div class="machine-line">
         <span class="code">{{ machine.code }}</span>
         <span class="badge" :class="statusClassMap[machine.status]">{{ machine.status }}</span>
+        <span v-if="machine.hasOpenReport && machine.status !== '待檢查'" class="badge reported">問題待處理</span>
       </div>
       <div class="sub">{{ machine.detail }}</div>
     </div>
@@ -108,6 +110,11 @@ const statusClassMap = {
 .badge.maintenance {
   background: #fcebec;
   color: var(--red);
+}
+
+.badge.reported {
+  background: #fff0e8;
+  color: #ac4d22;
 }
 
 /* 底下那行說明文字（剩餘時間／最後訊號之類的） */
